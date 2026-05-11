@@ -6,11 +6,35 @@ Go + HTML template app for OpenHost app discovery and one-click publishing.
 
 - Aggregates app entries from a configurable list of JSON feed sources
 - Renders a server-side catalog UI (no React)
-- Publishes apps to OpenHost with a single click
-- Polls deployment status and app logs
-- Falls back to OpenHost's native installer flow when router token access is not configured
+- Publishes apps to OpenHost with a single click via the **installer v2 service**
+- Polls deployment status and app logs via the same service
+- Surfaces a permission-grant link if the owner has not yet authorized the catalog to install the requested repo
 
 Deployment configuration is always read from the target repo's `openhost.toml` during deploy.
+
+## How install works
+
+The catalog calls the OpenHost router's `installer` v2 service to install apps. There is no owner API token involved — the catalog uses its own `OPENHOST_APP_TOKEN` (injected by the router for every installed app) and a `[[services.v2.consumes]]` grant.
+
+Service URL: `github.com/imbue-openhost/openhost/services/installer`
+
+The catalog's `openhost.toml` declares:
+
+```toml
+[[services.v2.consumes]]
+service = "github.com/imbue-openhost/openhost/services/installer"
+shortname = "installer"
+version = ">=0.1.0"
+grants = [
+  { capability = "install", repo_url_prefix = "https://github.com/" },
+]
+```
+
+The catalog then calls `POST /api/services/v2/call/installer/install` (and `GET /api/services/v2/call/installer/status/<name>`, `GET /api/services/v2/call/installer/logs/<name>`). The `installer` segment is the manifest-declared shortname; the router proxies these to the installer service.
+
+When the owner installs the catalog (or the catalog is auto-installed on first boot via `default_apps`), this grant is recorded against the catalog. Install calls are then authorized by prefix-match against `repo_url`. If the catalog tries to install a repo outside the granted prefix, the router returns a 403 with a `grant_url` that the publish page links to.
+
+This replaces the legacy `APP_REPO_ROUTER_TOKEN` mechanism, which granted owner-level access to the router. The new model is scoped to install-only, and the prefix can be narrowed by the owner from the dashboard's permissions page.
 
 ## Feed format
 
@@ -49,8 +73,7 @@ Required fields: `name`, `title`, `repo_url`. All others may be omitted.
 - `OPENHOST_SQLITE_main` (preferred DB path from OpenHost)
 - `CATALOG_DB_PATH` (DB path fallback)
 - `OPENHOST_ROUTER_URL` (default `http://host.docker.internal:8080`)
-- `APP_REPO_ROUTER_TOKEN` (optional direct router API token for one-click publish)
-- `OPENHOST_APP_TOKEN` (used to fetch `APP_REPO_ROUTER_TOKEN` from secrets service)
+- `OPENHOST_APP_TOKEN` (injected by OpenHost; used as the bearer when calling the installer service)
 - `OPENHOST_APP_NAME` (default `openhost-catalog`)
 - `OPENHOST_APP_BASE_PATH` (injected by OpenHost; used for path-based routing compatibility)
 - `DEFAULT_SOURCE_URL` (auto-seeded on first boot if no sources are configured; defaults to the official `imbue-openhost/openhost-apps` catalog)

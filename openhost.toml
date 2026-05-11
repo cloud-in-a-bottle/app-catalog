@@ -1,6 +1,6 @@
 [app]
 name = "catalog"
-version = "0.1.0"
+version = "0.2.0"
 description = "OpenHost app discovery and one-click deployment catalog"
 
 [runtime.container]
@@ -18,7 +18,15 @@ cpu_millicores = 500
 sqlite = ["main"]
 app_data = true
 
-[services.secrets]
-keys = [
-  { key = "key:APP_REPO_ROUTER_TOKEN", reason = "Deploy apps via OpenHost router API", required = false }
+# The catalog uses the router-internal ``installer`` v2 service to
+# deploy apps on the owner's behalf.  Granting this permission lets
+# the catalog install apps whose repo_url begins with one of the
+# listed prefixes.  Limited to the official GitHub source feeds by
+# default; the owner can widen it from the dashboard permissions page.
+[[services.v2.consumes]]
+service = "github.com/imbue-openhost/openhost/services/installer"
+shortname = "installer"
+version = ">=0.1.0"
+grants = [
+  { capability = "install", repo_url_prefix = "https://github.com/" },
 ]

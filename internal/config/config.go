@@ -13,7 +13,6 @@ type Config struct {
 	AppBasePath       string
 	DBPath            string
 	RouterURL         string
-	RouterToken       string
 	AppToken          string
 	AllowHTTPRepoURLs bool
 	AllowFileRepoURLs bool
@@ -28,7 +27,6 @@ func Load() Config {
 		AppBasePath:       strings.TrimSpace(os.Getenv("OPENHOST_APP_BASE_PATH")),
 		DBPath:            defaultDBPath(),
 		RouterURL:         strings.TrimRight(envOrDefault("OPENHOST_ROUTER_URL", "http://host.docker.internal:8080"), "/"),
-		RouterToken:       strings.TrimSpace(os.Getenv("APP_REPO_ROUTER_TOKEN")),
 		AppToken:          strings.TrimSpace(os.Getenv("OPENHOST_APP_TOKEN")),
 		AllowHTTPRepoURLs: boolEnv("CATALOG_ALLOW_HTTP_REPO_URLS", false),
 		AllowFileRepoURLs: boolEnv("CATALOG_ALLOW_FILE_URLS", false),

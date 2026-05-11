@@ -58,9 +58,12 @@ type Publish struct {
 	RouterAppName    string
 	Status           string
 	ErrorMessage     string
-	ManualInstallURL string
-	CreatedAt        string
-	UpdatedAt        string
+	// GrantURL is set to the v2 permissions approval URL when an
+	// install was blocked because the catalog lacks an installer grant
+	// covering the requested repo_url.  Empty otherwise.
+	GrantURL  string
+	CreatedAt string
+	UpdatedAt string
 }
 
 type AppListFilter struct {
@@ -153,7 +156,7 @@ func (s *Store) Init(ctx context.Context) error {
 			router_app_name TEXT NOT NULL DEFAULT '',
 			status TEXT NOT NULL,
 			error_message TEXT NOT NULL DEFAULT '',
-			manual_install_url TEXT NOT NULL DEFAULT '',
+			grant_url TEXT NOT NULL DEFAULT '',
 			created_at TEXT NOT NULL,
 			updated_at TEXT NOT NULL,
 			FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
@@ -200,6 +203,17 @@ func (s *Store) Init(ctx context.Context) error {
 			if !strings.Contains(err.Error(), "no such column") {
 				return fmt.Errorf("drop legacy integration columns: %w", err)
 			}
+		}
+	}
+
+	// Rename publishes.manual_install_url -> grant_url for the
+	// installer v2 migration.  Old column held the dashboard
+	// /add_app fallback URL; new column holds a permissions_v2
+	// approval URL.  Idempotent: RENAME COLUMN raises "no such
+	// column" once already renamed.
+	if _, err := s.db.ExecContext(ctx, `ALTER TABLE publishes RENAME COLUMN manual_install_url TO grant_url`); err != nil {
+		if !strings.Contains(err.Error(), "no such column") {
+			return fmt.Errorf("rename manual_install_url to grant_url: %w", err)
 		}
 	}
 	return nil
@@ -523,7 +537,7 @@ func (s *Store) CreatePublish(ctx context.Context, publish Publish) error {
 		ctx,
 		`INSERT INTO publishes
 		(id, source_id, app_id, title, requested_app_name, repo_url, repo_ref, router_app_name, status,
-		 error_message, manual_install_url, created_at, updated_at)
+		 error_message, grant_url, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		publish.ID,
 		publish.SourceID,
@@ -535,7 +549,7 @@ func (s *Store) CreatePublish(ctx context.Context, publish Publish) error {
 		publish.RouterAppName,
 		publish.Status,
 		publish.ErrorMessage,
-		publish.ManualInstallURL,
+		publish.GrantURL,
 		publish.CreatedAt,
 		publish.UpdatedAt,
 	)
@@ -550,7 +564,7 @@ func (s *Store) GetPublish(ctx context.Context, publishID string) (Publish, erro
 		ctx,
 		`SELECT
 			id, source_id, app_id, title, requested_app_name, repo_url, repo_ref, router_app_name, status,
-			error_message, manual_install_url, created_at, updated_at
+			error_message, grant_url, created_at, updated_at
 		 FROM publishes
 		 WHERE id = ?`,
 		publishID,
@@ -568,7 +582,7 @@ func (s *Store) GetPublish(ctx context.Context, publishID string) (Publish, erro
 		&p.RouterAppName,
 		&p.Status,
 		&p.ErrorMessage,
-		&p.ManualInstallURL,
+		&p.GrantURL,
 		&p.CreatedAt,
 		&p.UpdatedAt,
 	); err != nil {
@@ -586,12 +600,12 @@ func (s *Store) UpdatePublish(ctx context.Context, publish Publish) error {
 	_, err := s.db.ExecContext(
 		ctx,
 		`UPDATE publishes
-		 SET router_app_name = ?, status = ?, error_message = ?, manual_install_url = ?, updated_at = ?
+		 SET router_app_name = ?, status = ?, error_message = ?, grant_url = ?, updated_at = ?
 		 WHERE id = ?`,
 		publish.RouterAppName,
 		publish.Status,
 		publish.ErrorMessage,
-		publish.ManualInstallURL,
+		publish.GrantURL,
 		publish.UpdatedAt,
 		publish.ID,
 	)

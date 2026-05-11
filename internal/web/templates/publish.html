@@ -31,10 +31,10 @@
 
     <p id="publish-error" class="error {{if not .Publish.ErrorMessage}}hidden{{end}}">{{.Publish.ErrorMessage}}</p>
 
-    <div id="manual-install" style="background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.8em 1em; {{if ne .Publish.Status "redirect_required"}}display: none;{{end}}">
-      <p>One-click deploy is not configured yet for this app instance.</p>
-      {{if .Publish.ManualInstallURL}}
-        <p><a id="manual-install-link" href="{{.Publish.ManualInstallURL}}">Open OpenHost installer</a></p>
+    <div id="grant-required" style="background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.8em 1em; {{if ne .Publish.Status "permission_required"}}display: none;{{end}}">
+      <p>This catalog does not yet have permission to install repos like this one.  The owner can grant it from the OpenHost permissions page.</p>
+      {{if .Publish.GrantURL}}
+        <p><a id="grant-url-link" href="{{.Publish.GrantURL}}">Approve installer permission</a></p>
       {{end}}
     </div>
 

@@ -14,8 +14,8 @@
   var appNameEl = document.getElementById("router-app-name");
   var appLinkEl = document.getElementById("router-app-url");
   var pageLinkEl = document.getElementById("router-page-url");
-  var manualBoxEl = document.getElementById("manual-install");
-  var manualLinkEl = document.getElementById("manual-install-link");
+  var grantBoxEl = document.getElementById("grant-required");
+  var grantLinkEl = document.getElementById("grant-url-link");
 
   var statusTimer = null;
   var logsTimer = null;
@@ -29,7 +29,7 @@
       case "building":
       case "starting":
         return "status-active";
-      case "redirect_required":
+      case "permission_required":
         return "status-warn";
       default:
         return "status-neutral";
@@ -76,11 +76,11 @@
       setVisible(pageLinkEl, true);
     }
 
-    if (manualBoxEl) {
-      var needsManual = status === "redirect_required";
-      setVisible(manualBoxEl, needsManual);
-      if (needsManual && manualLinkEl && data.manual_install_url) {
-        manualLinkEl.href = data.manual_install_url;
+    if (grantBoxEl) {
+      var needsGrant = status === "permission_required";
+      setVisible(grantBoxEl, needsGrant);
+      if (needsGrant && grantLinkEl && data.grant_url) {
+        grantLinkEl.href = data.grant_url;
       }
     }
 
@@ -106,7 +106,7 @@
   }
 
   function refreshLogs() {
-    if (terminal && statusEl && statusEl.textContent === "redirect_required") {
+    if (terminal && statusEl && statusEl.textContent === "permission_required") {
       return;
     }
     fetch(logsUrl, { credentials: "same-origin" })
