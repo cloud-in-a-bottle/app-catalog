@@ -6,35 +6,19 @@ Go + HTML template app for OpenHost app discovery and one-click publishing.
 
 - Aggregates app entries from a configurable list of JSON feed sources
 - Renders a server-side catalog UI (no React)
-- Publishes apps to OpenHost with a single click via the **installer v2 service**
-- Polls deployment status and app logs via the same service
-- Surfaces a permission-grant link if the owner has not yet authorized the catalog to install the requested repo
-
-Deployment configuration is always read from the target repo's `openhost.toml` during deploy.
+- Install buttons open the OpenHost router's `/add_app` page in a new tab, pre-filled with the repo URL and suggested app name, so the owner can review permissions before deploying
 
 ## How install works
 
-The catalog calls the OpenHost router's `installer` v2 service to install apps. There is no owner API token involved — the catalog uses its own `OPENHOST_APP_TOKEN` (injected by the router for every installed app) and a `[[services.v2.consumes]]` grant.
+Clicking Install on any catalog app opens the OpenHost router's `/add_app` page in a new tab. The URL is constructed as:
 
-Service URL: `github.com/imbue-openhost/openhost/services/installer`
-
-The catalog's `openhost.toml` declares:
-
-```toml
-[[services.v2.consumes]]
-service = "github.com/imbue-openhost/openhost/services/installer"
-shortname = "installer"
-version = ">=0.1.0"
-grants = [
-  { capability = "install", repo_url_prefix = "https://github.com/" },
-]
+```
+<router-base-url>/add_app?repo=<repo-url>&name=<app-id>
 ```
 
-The catalog then calls `POST /api/services/v2/call/installer/install` (and `GET /api/services/v2/call/installer/status/<name>`, `GET /api/services/v2/call/installer/logs/<name>`). The `installer` segment is the manifest-declared shortname; the router proxies these to the installer service.
+The `/add_app` page (served by the router) shows the app's manifest, required permissions, and a confirmation step before deployment begins. This gives the owner full visibility into what will be installed before any action is taken.
 
-When the owner installs the catalog (or the catalog is auto-installed on first boot via `default_apps`), this grant is recorded against the catalog. Install calls are then authorized by prefix-match against `repo_url`. If the catalog tries to install a repo outside the granted prefix, the router returns a 403 with a `grant_url` that the publish page links to.
-
-This replaces the legacy `APP_REPO_ROUTER_TOKEN` mechanism, which granted owner-level access to the router. The new model is scoped to install-only, and the prefix can be narrowed by the owner from the dashboard's permissions page.
+The `router-base-url` is derived from the request's `Host` / `X-Forwarded-Host` headers, with the catalog's own app-name prefix stripped, so it always points to the correct OpenHost instance.
 
 ## Feed format
 
