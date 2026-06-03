@@ -58,10 +58,11 @@ type indexPageData struct {
 }
 
 type appPageData struct {
-	BasePath      string
-	App           store.CatalogApp
-	Error         string
-	RouterBaseURL string
+	BasePath       string
+	App            store.CatalogApp
+	Error          string
+	RouterBaseURL  string
+	AddAppURL      string
 }
 
 type sourcesPageData struct {
@@ -96,6 +97,7 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 		"join":        strings.Join,
 		"statusClass": statusClass,
 		"stars":       renderStars,
+		"addAppURL":   buildAddAppURL,
 	}).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
@@ -330,6 +332,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		BasePath:      s.basePathForRequest(r),
 		App:           app,
 		RouterBaseURL: s.routerBaseURL(r),
+		AddAppURL:     s.addAppURL(r, app),
 	})
 }
 
@@ -633,6 +636,14 @@ func (s *Server) repoAllowed(repoURL string) bool {
 	}
 }
 
+// addAppURL builds the router's /add_app URL pre-filled with the app's
+// repo URL (and optional ref) and suggested name.  This is used by the
+// Install button to open the OpenHost installation page in a new tab so
+// the user can review permissions before deploying.
+func (s *Server) addAppURL(r *http.Request, app store.CatalogApp) string {
+	return buildAddAppURL(s.routerBaseURL(r), app.RepoURL, app.RepoRef, app.AppID)
+}
+
 func (s *Server) appExternalURL(r *http.Request, appName string) string {
 	if appName == "" {
 		return ""
@@ -751,6 +762,20 @@ func isTerminalPublishStatus(status string) bool {
 	default:
 		return false
 	}
+}
+
+// buildAddAppURL constructs the router's /add_app URL pre-filled with the
+// given repo URL (including optional @ref suffix) and suggested app name.
+// It is exposed as the "addAppURL" template function.
+func buildAddAppURL(routerBaseURL, repoURL, repoRef, appID string) string {
+	repo := repoURL
+	if repoRef != "" {
+		repo = repo + "@" + repoRef
+	}
+	q := url.Values{}
+	q.Set("repo", repo)
+	q.Set("name", appID)
+	return routerBaseURL + "/add_app?" + q.Encode()
 }
 
 func withBase(basePath string, path string) string {
