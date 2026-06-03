@@ -32,9 +32,6 @@
   {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 
   <p style="color: #666; font-size: 0.9em;">Clicking Install opens the OpenHost installation page where you can review permissions before deploying.</p>
-  <a class="btn-primary"
-     href="{{.AddAppURL}}"
-     target="_blank"
-     rel="noopener">Install</a>
+  <button type="button" class="btn-primary" data-install-url="{{.AddAppURL}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
 </body>
 </html>

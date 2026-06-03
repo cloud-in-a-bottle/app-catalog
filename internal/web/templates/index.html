@@ -64,10 +64,7 @@
       <td>{{if .Tags}}{{join .Tags ", "}}{{else}}-{{end}}</td>
       <td>
         <div style="display: flex; gap: 0.5em; align-items: center;">
-          <a class="btn-primary"
-             href="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}"
-             target="_blank"
-             rel="noopener">Install</a>
+          <button type="button" class="btn-primary" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
           <a class="btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
         </div>
       </td>
