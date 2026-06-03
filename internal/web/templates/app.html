@@ -31,16 +31,10 @@
   <h2 style="margin-top: 2em;">Install</h2>
   {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 
-  <form method="post" action="{{withBase .BasePath "/publish"}}">
-    <input type="hidden" name="source_id" value="{{.App.SourceID}}">
-    <input type="hidden" name="app_id" value="{{.App.AppID}}">
-
-    <label>App name<br>
-      <input type="text" name="app_name" value="{{.App.AppID}}" required style="font-family: monospace; width: 15em;">
-    </label>
-
-    <p style="color: #666; font-size: 0.9em;">Deployment config is read from the target repo's <code>openhost.toml</code>.</p>
-    <button type="submit" class="btn-primary">Install</button>
-  </form>
+  <p style="color: #666; font-size: 0.9em;">Clicking Install opens the OpenHost installation page where you can review permissions before deploying.</p>
+  <a class="btn-primary"
+     href="{{.AddAppURL}}"
+     target="_blank"
+     rel="noopener">Install</a>
 </body>
 </html>

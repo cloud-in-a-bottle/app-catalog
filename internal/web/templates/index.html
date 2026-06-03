@@ -64,12 +64,10 @@
       <td>{{if .Tags}}{{join .Tags ", "}}{{else}}-{{end}}</td>
       <td>
         <div style="display: flex; gap: 0.5em; align-items: center;">
-          <form method="post" action="{{withBase $.BasePath "/publish"}}" style="display: inline;">
-            <input type="hidden" name="source_id" value="{{.SourceID}}">
-            <input type="hidden" name="app_id" value="{{.AppID}}">
-            <input type="hidden" name="app_name" value="{{.AppID}}">
-            <button type="submit" class="btn-primary">Install</button>
-          </form>
+          <a class="btn-primary"
+             href="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}"
+             target="_blank"
+             rel="noopener">Install</a>
           <a class="btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
         </div>
       </td>
