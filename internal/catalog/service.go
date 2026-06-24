@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -15,6 +16,22 @@ import (
 )
 
 var validIDPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
+// AllowedCategories is the canonical set of broad categories that feed apps
+// may use. Unknown values are silently dropped at ingest so feeds from older
+// sources remain compatible while the catalog enforces the taxonomy.
+var AllowedCategories = map[string]struct{}{
+	"ai":               {},
+	"data-liberation":  {},
+	"development":      {},
+	"entertainment":    {},
+	"networking":       {},
+	"privacy":          {},
+	"productivity":     {},
+	"publishing":       {},
+	"search":           {},
+	"utility":          {},
+}
 
 type Service struct {
 	store      *store.Store
@@ -63,7 +80,7 @@ func (s *Service) SyncSource(ctx context.Context, sourceID string) error {
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		_ = s.store.MarkSourceSyncFailed(ctx, sourceID, "fetch failed: "+err.Error())
+		markSyncFailed(ctx, s.store, sourceID, "fetch failed: "+err.Error())
 		return fmt.Errorf("fetch source feed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -74,24 +91,24 @@ func (s *Service) SyncSource(ctx context.Context, sourceID string) error {
 		if errMsg == "" {
 			errMsg = "unexpected status: " + resp.Status
 		}
-		_ = s.store.MarkSourceSyncFailed(ctx, sourceID, errMsg)
+		markSyncFailed(ctx, s.store, sourceID, errMsg)
 		return fmt.Errorf("source returned %s", resp.Status)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
-		_ = s.store.MarkSourceSyncFailed(ctx, sourceID, "read failed: "+err.Error())
+		markSyncFailed(ctx, s.store, sourceID, "read failed: "+err.Error())
 		return fmt.Errorf("read source response body: %w", err)
 	}
 
 	var feed sourceFeed
 	if err := json.Unmarshal(body, &feed); err != nil {
-		_ = s.store.MarkSourceSyncFailed(ctx, sourceID, "invalid JSON feed")
+		markSyncFailed(ctx, s.store, sourceID, "invalid JSON feed")
 		return fmt.Errorf("parse source JSON: %w", err)
 	}
 	if strings.TrimSpace(feed.Schema) != "openhost.catalog.v1" {
 		errMsg := "unsupported feed schema"
-		_ = s.store.MarkSourceSyncFailed(ctx, sourceID, errMsg)
+		markSyncFailed(ctx, s.store, sourceID, errMsg)
 		return fmt.Errorf("%s: %q", errMsg, feed.Schema)
 	}
 
@@ -107,7 +124,7 @@ func (s *Service) SyncSource(ctx context.Context, sourceID string) error {
 		// feed publisher error that needs to be fixed in the source feed.)
 		if _, dup := seen[app.AppID]; dup {
 			errMsg := fmt.Sprintf("duplicate app id %q in source feed; app IDs must be unique within a source", app.AppID)
-			_ = s.store.MarkSourceSyncFailed(ctx, sourceID, errMsg)
+			markSyncFailed(ctx, s.store, sourceID, errMsg)
 			return errors.New(errMsg)
 		}
 		seen[app.AppID] = struct{}{}
@@ -115,7 +132,7 @@ func (s *Service) SyncSource(ctx context.Context, sourceID string) error {
 	}
 
 	if err := s.store.ReplaceCatalogAppsForSource(ctx, sourceID, apps); err != nil {
-		_ = s.store.MarkSourceSyncFailed(ctx, sourceID, "db update failed: "+err.Error())
+		markSyncFailed(ctx, s.store, sourceID, "db update failed: "+err.Error())
 		return err
 	}
 
@@ -172,15 +189,37 @@ func normalizeFeedApp(sourceID string, in sourceFeedApp) (store.CatalogApp, bool
 		Description:              strings.TrimSpace(in.Description),
 		RepoURL:                  repoURL,
 		RepoRef:                  strings.TrimSpace(in.RepoRef),
-		IconURL:                  strings.TrimSpace(in.IconURL),
+		IconURL:                  safeFeedURL(in.IconURL),
 		Tags:                     compactList(in.Tags),
-		Categories:               compactList(in.Categories),
-		WebsiteURL:               strings.TrimSpace(in.WebsiteURL),
-		DocsURL:                  strings.TrimSpace(in.DocsURL),
+		Categories:               filterAllowedCategories(compactList(in.Categories)),
+		WebsiteURL:               safeFeedURL(in.WebsiteURL),
+		DocsURL:                  safeFeedURL(in.DocsURL),
 		OpenhostIntegrationScore: score,
 	}
 
 	return out, true
+}
+
+// safeFeedURL returns raw if it is an absolute http/https URL, otherwise "".
+// This prevents javascript: and data: URLs from catalog feeds reaching templates.
+func safeFeedURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		return ""
+	}
+	return raw
+}
+
+// markSyncFailed records a sync failure in the store and logs if that write
+// itself fails, so the original error path is never silently swallowed.
+func markSyncFailed(ctx context.Context, st *store.Store, sourceID, msg string) {
+	if err := st.MarkSourceSyncFailed(ctx, sourceID, msg); err != nil {
+		log.Printf("sync: failed to record sync failure for source %s: %v", sourceID, err)
+	}
 }
 
 func compactList(items []string) []string {
@@ -189,6 +228,16 @@ func compactList(items []string) []string {
 		v := strings.TrimSpace(item)
 		if v != "" {
 			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func filterAllowedCategories(cats []string) []string {
+	out := make([]string, 0, len(cats))
+	for _, c := range cats {
+		if _, ok := AllowedCategories[c]; ok {
+			out = append(out, c)
 		}
 	}
 	return out
