@@ -20,6 +20,113 @@ nav .spacer { flex: 1; }
 .log-output, .logs { background: #1e1e1e; color: #d4d4d4; padding: 1em; font-size: 0.85em; overflow-x: auto; max-height: 30em; overflow-y: auto; border-radius: 4px; min-height: 180px; font-family: monospace; }
 .hidden { display: none; }
 
+/* Landing search ---------------------------------------------------------- */
+
+.landing-search { display: flex; gap: 0.5em; margin: 1.2em 0 1.5em; }
+.landing-search-input { flex: 1; font-size: 1.1em; padding: 0.45em 0.75em; }
+
+/* Category landing -------------------------------------------------------- */
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1em;
+  margin: 1.5em 0;
+}
+
+.cat-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 110px;
+  padding: 1em 1em;
+  border-radius: 10px;
+  text-align: left;
+  font-size: 1.35em;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+
+.cat-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+.cat-icon { font-size: 2em; line-height: 1; align-self: center; }
+
+.cat-btn-advanced {
+  background: transparent;
+  border: 2px solid #ccc;
+  color: #555;
+  font-weight: 500;
+}
+.cat-btn-advanced:hover { background: #f5f5f5; border-color: #999; color: #222; filter: none; transform: none; }
+
+/* Category banner (selected category view) -------------------------------- */
+
+.cat-banner {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 140px;
+  padding: 1.2em 1.5em;
+  border-radius: 10px;
+  color: #fff;
+  margin: 0.6em 0 1.2em;
+  box-sizing: border-box;
+}
+.cat-banner .cat-icon { font-size: 3em; align-self: flex-end; }
+.cat-banner-label { font-size: 2em; font-weight: 700; line-height: 1.1; }
+
+/* Category / advanced view header ---------------------------------------- */
+
+.view-header {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  margin-bottom: 1em;
+}
+.back-link { color: #555; text-decoration: none; white-space: nowrap; }
+.back-link:hover { color: #222; }
+.adv-link { margin-left: auto; color: #555; font-size: 0.9em; white-space: nowrap; }
+.adv-link:hover { color: #222; }
+
+/* App cell ---------------------------------------------------------------- */
+
+.app-title { font-size: 1.1em; font-weight: 700; }
+.app-desc { color: #666; margin-top: 0.2em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Tag chips --------------------------------------------------------------- */
+
+.tag-list { display: flex; flex-wrap: wrap; gap: 0.3em; }
+.tag-chip { display: inline-block; padding: 0.2em 0.65em; border-radius: 999px; background: #e8f0fe; color: #1e40af; font-size: 0.82em; white-space: nowrap; text-decoration: none; }
+.tag-chip:hover { background: #bfdbfe; }
+.tag-chip-active { background: #93c5fd; color: #1e3a8a; }
+.tag-chip-active:hover { background: #60a5fa; }
+.cat-chip { display: inline-block; padding: 0.2em 0.65em; border-radius: 999px; background: #dcfce7; color: #166534; font-size: 0.82em; white-space: nowrap; text-decoration: none; }
+.cat-chip:hover { background: #bbf7d0; }
+.cat-chip-active { background: #86efac; color: #14532d; }
+.cat-chip-active:hover { background: #4ade80; }
+
+/* Advanced search form ---------------------------------------------------- */
+
+.adv-form { display: flex; gap: 0.5em; align-items: end; flex-wrap: wrap; margin-bottom: 1em; }
+.adv-form label { display: flex; flex-direction: column; gap: 0.25em; }
+.adv-form-submit { display: flex; align-items: flex-end; }
+
+.custom-expr { margin-top: 0.25em; width: 200px; }
+
+/* App action buttons ------------------------------------------------------ */
+
+.app-actions { display: flex; gap: 0.5em; align-items: stretch; }
+.app-action-btn { width: 5.5em; text-align: center; box-sizing: border-box; font: inherit; line-height: 1.4; display: flex; align-items: center; justify-content: center; }
+
+.sync-warning { background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em; }
+
 /* Integration rating ---------------------------------------------------- */
 
 .stars { color: #d48806; font-family: serif; letter-spacing: 1px; font-size: 1.05em; white-space: nowrap; }

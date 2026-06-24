@@ -13,66 +13,184 @@
   </nav>
   <hr>
 
-  <h2>Available Apps</h2>
-
   {{if .FailedSyncNames}}
-  <div style="background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em;">
+  <div class="sync-warning">
     <strong>Showing possibly stale data.</strong> Could not sync source{{if gt (len .FailedSyncNames) 1}}s{{end}}: {{join .FailedSyncNames ", "}}. See the <a href="{{withBase .BasePath "/sources"}}">Sources page</a> for details.
   </div>
   {{end}}
 
-  <div style="margin-bottom: 1em; display: flex; gap: 0.5em; align-items: end; flex-wrap: wrap;">
-    <form method="get" action="{{withBase .BasePath "/"}}" style="display: flex; gap: 0.5em; align-items: end; flex-wrap: wrap;">
-      <label>Search<br><input type="text" name="q" value="{{.Query}}" placeholder="Name, id, or description" style="width: 250px;"></label>
-      <label>Source<br>
-        <select name="source" style="width: 150px;">
-          <option value="">All</option>
-          {{range .Sources}}
-            <option value="{{.ID}}" {{if eq $.SourceFilter .ID}}selected{{end}}>{{.Name}}</option>
-          {{end}}
-        </select>
-      </label>
-      <label>Tag<br><input type="text" name="tag" value="{{.TagFilter}}" placeholder="filter" style="width: 120px;"></label>
-      <button type="submit">Filter</button>
-    </form>
+  {{if .Advanced}}
+
+  {{/* ── Advanced search ─────────────────────────────────────── */}}
+  <a href="{{withBase .BasePath "/"}}" class="back-link">← Categories</a>
+  <div class="cat-banner" style="background:{{catGradient "advanced"}}">
+    <span class="cat-icon">🔎</span>
+    <span class="cat-banner-label">Advanced Search</span>
   </div>
+  <form method="get" action="{{withBase .BasePath "/"}}" class="adv-form">
+    <input type="hidden" name="advanced" value="1">
+    <input type="hidden" name="filter" value="1">
+    <label>Search<br><input type="text" name="q" value="{{.Query}}" placeholder="Name, id, or description" style="width:250px;"></label>
+    <label>Source<br>
+      <select name="source" style="width:150px;">
+        <option value="">All</option>
+        {{range .Sources}}
+          <option value="{{.ID}}" {{if eq $.SourceFilter .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </label>
+    <label>Category<br>
+      <select name="category" id="cat-select" style="width:160px;" onchange="toggleCustom('cat')">
+        <option value="">All</option>
+        {{range .AllCategories}}
+          <option value="{{.}}" {{if eq $.CategoryFilter .}}selected{{end}}>{{catLabel .}}</option>
+        {{end}}
+        <option value="custom" {{if eq .CategoryFilter "custom"}}selected{{end}}>Custom expression…</option>
+      </select>
+      <input type="text" name="category_expr" id="cat-expr"
+             value="{{.CategoryExpr}}" placeholder="e.g. privacy &#124;&#124; search"
+             class="custom-expr{{if ne .CategoryFilter "custom"}} hidden{{end}}">
+    </label>
+    <label>Tags<br>
+      <input type="text" name="tag_expr" value="{{.TagExpr}}" placeholder="e.g. rss &#38;&#38; privacy" style="width:200px;">
+    </label>
+    <div class="adv-form-submit"><button type="submit">Filter</button></div>
+  </form>
+  <script>
+  function toggleCustom(prefix) {
+    var sel = document.getElementById(prefix + '-select');
+    var inp = document.getElementById(prefix + '-expr');
+    inp.classList.toggle('hidden', sel.value !== 'custom');
+  }
+  </script>
+  {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+  {{template "advanced-app-table" .}}
 
-  {{if .Error}}
-    <p class="error">{{.Error}}</p>
-  {{end}}
+  {{else if .CategoryFilter}}
 
-  {{if .Apps}}
-  <table>
-    <tr>
-      <th>App</th>
-      <th>Source</th>
-      <th title="OpenHost integration rating">Rating</th>
-      <th>Tags</th>
-      <th>Actions</th>
-    </tr>
-    {{range .Apps}}
-    <tr>
-      <td>
-        <a href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}"><strong>{{.Title}}</strong></a>
-        <div style="color: #666;">{{.Description}}</div>
-        <div style="color: #666; font-family: monospace; font-size: 0.85em;">{{.RepoURL}}{{if .RepoRef}}@{{.RepoRef}}{{end}}</div>
-      </td>
-      <td>{{.SourceName}}</td>
-      <td class="rating">
-        {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5">{{stars .OpenhostIntegrationScore}}</span>{{end}}
-      </td>
-      <td>{{if .Tags}}{{join .Tags ", "}}{{else}}-{{end}}</td>
-      <td>
-        <div style="display: flex; gap: 0.5em; align-items: center;">
-          <button type="button" class="btn-primary" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
-          <a class="btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
-        </div>
-      </td>
-    </tr>
-    {{end}}
-  </table>
+  {{/* ── Category view ────────────────────────────────────────── */}}
+  <a href="{{withBase .BasePath "/"}}" class="back-link">← Categories</a>
+  <div class="cat-banner" style="background:{{catGradient .CategoryFilter}}">
+    <span class="cat-icon">{{if eq .CategoryFilter "all"}}📦{{else}}{{catIcon .CategoryFilter}}{{end}}</span>
+    <span class="cat-banner-label">{{if eq .CategoryFilter "all"}}All Apps{{else}}{{catLabel .CategoryFilter}}{{end}}</span>
+  </div>
+  {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+  {{template "category-app-table" .}}
+
   {{else}}
-    <p style="color: #888;">No catalog entries yet. Add a source on the Sources page.</p>
+
+  {{/* ── Landing: search + category grid ───────────────────────── */}}
+  <form method="get" action="{{withBase .BasePath "/"}}">
+    <div class="landing-search">
+      <input type="text" name="q" value="{{.Query}}" placeholder="Search apps by name, category, or tag…" class="landing-search-input"{{if not .Query}} autofocus{{end}}>
+      <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+  </form>
+
+  {{if .Query}}
+    {{if .Apps}}
+      <p style="color:#888;margin:0.5em 0 0.8em;">{{len .Apps}} result{{if ne (len .Apps) 1}}s{{end}} for <strong>{{.Query}}</strong></p>
+      {{template "category-app-table" .}}
+    {{else}}
+      <p style="color:#888;">No apps found for <strong>{{.Query}}</strong>.</p>
+    {{end}}
+  {{else}}
+  <h2>Browse by Category</h2>
+  <div class="category-grid">
+    {{range .AllCategories}}
+    <a href="{{withBase $.BasePath (printf "/?category=%s" .)}}" class="cat-btn" style="background:{{catGradient .}}">
+      <span class="cat-icon">{{catIcon .}}</span><span>{{catLabel .}}</span>
+    </a>
+    {{end}}
+    <a href="{{withBase .BasePath "/?category=all"}}" class="cat-btn" style="background:{{catGradient "all"}}">
+      <span class="cat-icon">📦</span><span>All Apps</span>
+    </a>
+    <a href="{{withBase .BasePath "/?advanced"}}" class="cat-btn cat-btn-advanced">
+      <span class="cat-icon">🔎</span><span>Advanced Search</span>
+    </a>
+  </div>
   {{end}}
+
+  {{end}}
+
 </body>
 </html>
+
+{{/* ── Category view table: shows Tags ────────────────────── */}}
+{{define "category-app-table"}}
+{{if .Apps}}
+<table>
+  <tr>
+    <th>App</th>
+    <th title="OpenHost integration rating">Rating</th>
+    <th>Categories &amp; Tags</th>
+    <th>Actions</th>
+  </tr>
+  {{range .Apps}}
+  <tr>
+    <td>
+      <div class="app-title">{{.Title}}</div>
+      <div class="app-desc">{{.Description}}</div>
+    </td>
+    <td class="rating">
+      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5">{{stars .OpenhostIntegrationScore}}</span>{{end}}
+    </td>
+    <td>
+      {{if or .Categories .Tags}}
+      <div class="tag-list">
+        {{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}
+        {{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}
+      </div>
+      {{else}}-{{end}}
+    </td>
+    <td>
+      <div class="app-actions">
+        <button type="button" class="btn btn-primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
+        <a class="btn app-action-btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
+      </div>
+    </td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+  <p style="color:#888;">No apps found.</p>
+{{end}}
+{{end}}
+
+{{/* ── Advanced search table: shows Categories and Tags ───── */}}
+{{define "advanced-app-table"}}
+{{if not .ShowApps}}
+  <p style="color:#888;">Enter a search term or select a filter to find apps.</p>
+{{else if .Apps}}
+<table>
+  <tr>
+    <th>App</th>
+    <th title="OpenHost integration rating">Rating</th>
+    <th>Categories</th>
+    <th>Tags</th>
+    <th>Actions</th>
+  </tr>
+  {{range .Apps}}
+  <tr>
+    <td>
+      <div class="app-title">{{.Title}}</div>
+      <div class="app-desc">{{.Description}}</div>
+    </td>
+    <td class="rating">
+      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5">{{stars .OpenhostIntegrationScore}}</span>{{end}}
+    </td>
+    <td>{{if .Categories}}<div class="tag-list">{{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}</div>{{else}}-{{end}}</td>
+    <td>{{if .Tags}}<div class="tag-list">{{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}</div>{{else}}-{{end}}</td>
+    <td>
+      <div class="app-actions">
+        <button type="button" class="btn btn-primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
+        <a class="btn app-action-btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
+      </div>
+    </td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+  <p style="color:#888;">No apps found.</p>
+{{end}}
+{{end}}

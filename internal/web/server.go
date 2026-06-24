@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -18,6 +19,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
@@ -35,23 +37,35 @@ var appNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 // enabled sources before we give up and render with whatever data we have.
 const sourceSyncBudget = 10 * time.Second
 
+// sourceSyncCooldown is the minimum time between syncs of a single source.
+// Requests within this window skip the fetch and serve cached DB data.
+const sourceSyncCooldown = 60 * time.Second
+
 type Server struct {
-	cfg     config.Config
-	store   *store.Store
-	catalog *catalog.Service
-	router  *router.Client
-	http    *http.Client
-	tmpl    *template.Template
-	static  http.Handler
+	cfg          config.Config
+	store        *store.Store
+	catalog      *catalog.Service
+	router       *router.Client
+	http         *http.Client
+	tmpl         *template.Template
+	static       http.Handler
+	syncMu       sync.Mutex
+	lastSyncTime map[string]time.Time
 }
 
 type indexPageData struct {
 	BasePath        string
 	Query           string
 	SourceFilter    string
-	TagFilter       string
+	TagExpr         string
+	CategoryFilter  string
+	CategoryExpr    string
+	Advanced        bool
+	TagView         bool // simple single-tag filter with no other filters active
 	Sources         []store.Source
+	AllCategories   []string
 	Apps            []store.CatalogApp
+	ShowApps        bool
 	Error           string
 	RouterBaseURL   string
 	FailedSyncNames []string
@@ -98,6 +112,13 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 		"statusClass": statusClass,
 		"stars":       renderStars,
 		"addAppURL":   buildAddAppURL,
+		"catGradient": categoryGradient,
+		"catLabel":    categoryLabel,
+		"catIcon":     categoryIcon,
+		"tagClickURL":  tagClickURL,
+		"catChipURL":   catChipURL,
+		"isActiveTag":  isActiveTag,
+		"isActiveCat":  isActiveCat,
 	}).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
@@ -116,13 +137,14 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 	}
 
 	return &Server{
-		cfg:     cfg,
-		store:   st,
-		catalog: catalog.NewService(st, httpClient),
-		router:  router.NewClient(cfg.RouterURL, cfg.RequestTimeout),
-		http:    httpClient,
-		tmpl:    tmpl,
-		static:  http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))),
+		cfg:          cfg,
+		store:        st,
+		catalog:      catalog.NewService(st, httpClient),
+		router:       router.NewClient(cfg.RouterURL, cfg.RequestTimeout),
+		http:         httpClient,
+		tmpl:         tmpl,
+		static:       http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))),
+		lastSyncTime: make(map[string]time.Time),
 	}, nil
 }
 
@@ -173,16 +195,44 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	sourceFilter := strings.TrimSpace(r.URL.Query().Get("source"))
-	tagFilter := strings.TrimSpace(r.URL.Query().Get("tag"))
+	tagExpr := strings.TrimSpace(r.URL.Query().Get("tag_expr"))
+	categoryFilter := strings.TrimSpace(r.URL.Query().Get("category"))
+	categoryExpr := strings.TrimSpace(r.URL.Query().Get("category_expr"))
+	advanced := r.URL.Query().Has("advanced")
 
-	apps, err := s.store.ListCatalogApps(ctx, store.AppListFilter{
-		Query:    query,
-		SourceID: sourceFilter,
-		Tag:      tagFilter,
-	})
-	if err != nil {
-		s.renderError(w, http.StatusInternalServerError, "failed to query catalog apps", err)
-		return
+	// "all" / "custom" are UI sentinels; the store receives an empty string.
+	storeCategory := categoryFilter
+	if storeCategory == "all" || storeCategory == "custom" {
+		storeCategory = ""
+	}
+
+	// Category expression only applies when "custom" mode is selected.
+	appliedCategoryExpr := ""
+	if categoryFilter == "custom" {
+		appliedCategoryExpr = categoryExpr
+	}
+
+	// Show apps when: a category is chosen (category view), the advanced form
+	// was submitted, or a query is entered on the main landing page.
+	formSubmitted := r.URL.Query().Has("filter")
+	mainSearch := !advanced && categoryFilter == "" && query != ""
+	showApps := (!advanced && categoryFilter != "") || (advanced && formSubmitted) || mainSearch
+
+	var apps []store.CatalogApp
+	if showApps {
+		var err error
+		apps, err = s.store.ListCatalogApps(ctx, store.AppListFilter{
+			Query:        query,
+			SearchAll:    mainSearch,
+			SourceID:     sourceFilter,
+			TagExpr:      tagExpr,
+			Category:     storeCategory,
+			CategoryExpr: appliedCategoryExpr,
+		})
+		if err != nil {
+			s.renderError(w, http.StatusInternalServerError, "failed to query catalog apps", err)
+			return
+		}
 	}
 
 	sources, err := s.store.ListSources(ctx)
@@ -191,13 +241,24 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	allCategories, err := s.store.ListAllCategories(ctx)
+	if err != nil {
+		s.renderError(w, http.StatusInternalServerError, "failed to list categories", err)
+		return
+	}
+
 	s.render(w, http.StatusOK, "index.html", indexPageData{
 		BasePath:        s.basePathForRequest(r),
 		Query:           query,
 		SourceFilter:    sourceFilter,
-		TagFilter:       tagFilter,
+		TagExpr:         tagExpr,
+		CategoryFilter:  categoryFilter,
+		CategoryExpr:    categoryExpr,
+		Advanced:        advanced,
 		Sources:         sources,
+		AllCategories:   allCategories,
 		Apps:            apps,
+		ShowApps:        showApps,
 		RouterBaseURL:   s.routerBaseURL(r),
 		FailedSyncNames: failedSyncs,
 	})
@@ -521,9 +582,14 @@ func (s *Server) handlePublishStatusJSON(w http.ResponseWriter, r *http.Request,
 		resp.RouterPageURL = s.routerPageURL(r, publish.RouterAppName)
 	}
 
+	data, err := json.Marshal(resp)
+	if err != nil {
+		s.renderError(w, http.StatusInternalServerError, "failed to encode status", err)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("failed to encode publish status response: %v", err)
+	if _, err := w.Write(data); err != nil {
+		log.Printf("failed to write publish status response: %v", err)
 	}
 }
 
@@ -594,8 +660,10 @@ func (s *Server) refreshPublishState(ctx context.Context, publish store.Publish)
 }
 
 // syncEnabledSources syncs all enabled sources inline. Called on every catalog
-// page load so users always see fresh data. Returns the names of sources whose
-// sync failed so the caller can surface a stale-data warning in the UI.
+// page load so users always see fresh data. Sources synced within
+// sourceSyncCooldown are skipped to prevent request amplification. Returns the
+// names of sources whose sync failed so the caller can surface a stale-data
+// warning in the UI.
 func (s *Server) syncEnabledSources(ctx context.Context) []string {
 	syncCtx, cancel := context.WithTimeout(ctx, sourceSyncBudget)
 	defer cancel()
@@ -605,13 +673,35 @@ func (s *Server) syncEnabledSources(ctx context.Context) []string {
 		log.Printf("sync: failed to list sources: %v", err)
 		return nil
 	}
+
+	now := time.Now()
 	var failed []string
 	for _, src := range sources {
 		if !src.Enabled {
 			continue
 		}
+
+		s.syncMu.Lock()
+		last := s.lastSyncTime[src.ID]
+		s.syncMu.Unlock()
+
+		if now.Sub(last) < sourceSyncCooldown {
+			continue
+		}
+
+		// Stamp before the fetch so concurrent requests don't pile up
+		// behind a slow upstream.
+		s.syncMu.Lock()
+		s.lastSyncTime[src.ID] = now
+		s.syncMu.Unlock()
+
 		if err := s.catalog.SyncSource(syncCtx, src.ID); err != nil {
 			log.Printf("sync: failed to sync source %s: %v", src.ID, err)
+			// Reset so the next request retries rather than serving stale
+			// data for the full cooldown window after a failure.
+			s.syncMu.Lock()
+			s.lastSyncTime[src.ID] = time.Time{}
+			s.syncMu.Unlock()
 			failed = append(failed, src.Name)
 		}
 	}
@@ -706,14 +796,18 @@ func (s *Server) redirectTo(w http.ResponseWriter, r *http.Request, path string)
 }
 
 func (s *Server) render(w http.ResponseWriter, status int, name string, data any) {
+	var buf bytes.Buffer
+	if err := s.tmpl.ExecuteTemplate(&buf, name, data); err != nil {
+		log.Printf("template render error for %s: %v", name, err)
+		s.renderError(w, http.StatusInternalServerError, "page render failed", err)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Never cache catalog pages - they are synced on every load and stale
 	// views would make source edits look like they haven't taken effect.
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	if err := s.tmpl.ExecuteTemplate(w, name, data); err != nil {
-		log.Printf("template render error for %s: %v", name, err)
-	}
+	_, _ = w.Write(buf.Bytes())
 }
 
 func (s *Server) renderError(w http.ResponseWriter, status int, message string, err error) {
@@ -852,6 +946,246 @@ func makeSlug(in string) string {
 	in = regexp.MustCompile(`-+`).ReplaceAllString(in, "-")
 	in = strings.Trim(in, "-")
 	return in
+}
+
+func categoryGradient(cat string) template.CSS {
+	gradients := map[string]string{
+		"all":             "linear-gradient(to top right, #CFC7B3, #E5E0D5)", // Strength
+		"advanced":        "linear-gradient(to top right, #0B292B, #79898A)", // Confusion
+		"tag":             "linear-gradient(to top right, #8EAFCB, #C1D3E2)", // Peace
+		"ai":              "linear-gradient(to top right, #CECD0C, #E4E479)", // Energy
+		"data-liberation": "linear-gradient(to top right, #4B4C08, #9C9D77)", // Envy
+		"development":     "linear-gradient(to top right, #000000, #737373)", // Indifference
+		"entertainment":   "linear-gradient(to top right, #E4999A, #F0C7C7)", // Belonging
+		"monitoring":      "linear-gradient(to top right, #FCEFD4, #FDF6E7)", // Clarity
+		"networking":      "linear-gradient(to top right, #97630C, #C6A979)", // Curiosity
+		"privacy":         "linear-gradient(to top right, #492222, #9B8585)", // Courage
+		"productivity":    "linear-gradient(to top right, #F50D00, #FA7A73)", // Confidence
+		"publishing":      "linear-gradient(to top right, #D26645, #E6AB99)", // Respect
+		"search":          "linear-gradient(to top right, #E9ECD9, #F3F5EA)", // Inspiration
+		"utility":         "linear-gradient(to top right, #F5D6A0, #FAE8CB)", // Comfort
+	}
+	if g, ok := gradients[cat]; ok {
+		return template.CSS(g)
+	}
+	return "linear-gradient(to top right, #4b5563, #9ca3af)"
+}
+
+func categoryIcon(cat string) string {
+	icons := map[string]string{
+		"ai":              "🤖",
+		"data-liberation": "🔓",
+		"development":     "💻",
+		"entertainment":   "🎮",
+		"monitoring":      "📊",
+		"networking":      "🌐",
+		"privacy":         "🔒",
+		"productivity":    "⚡",
+		"publishing":      "📝",
+		"search":          "🔍",
+		"utility":         "🔧",
+	}
+	if i, ok := icons[cat]; ok {
+		return i
+	}
+	return "📦"
+}
+
+func categoryLabel(cat string) string {
+	labels := map[string]string{
+		"ai":              "AI",
+		"data-liberation": "Data Liberation",
+		"development":     "Development",
+		"entertainment":   "Entertainment",
+		"monitoring":      "Monitoring",
+		"networking":      "Networking",
+		"privacy":         "Privacy",
+		"productivity":    "Productivity",
+		"publishing":      "Publishing",
+		"search":          "Search",
+		"utility":         "Utility",
+	}
+	if l, ok := labels[cat]; ok {
+		return l
+	}
+	return cat
+}
+
+// effectiveCatExpr returns the active category expression given the raw URL
+// params: a simple category name is itself, "custom" defers to categoryExpr,
+// and "all"/empty means no filter.
+func effectiveCatExpr(categoryFilter, categoryExpr string) string {
+	switch categoryFilter {
+	case "", "all":
+		return ""
+	case "custom":
+		return categoryExpr
+	default:
+		return categoryFilter
+	}
+}
+
+// catChipURL returns the URL produced by clicking a category chip.
+// tagExpr is the current tag filter and is preserved in the generated URL.
+func catChipURL(basePath, categoryFilter, categoryExpr, cat, tagExpr string) string {
+	currentExpr := effectiveCatExpr(categoryFilter, categoryExpr)
+	advBase := "/?advanced&filter=1"
+	tagPart := ""
+	if tagExpr != "" {
+		tagPart = "&tag_expr=" + url.QueryEscape(tagExpr)
+	}
+
+	switch {
+	case currentExpr == "":
+		return withBase(basePath, advBase+"&category="+url.QueryEscape(cat)+tagPart)
+	case currentExpr == cat:
+		return withBase(basePath, advBase+tagPart)
+	case isSimpleExpr(currentExpr):
+		newExpr := currentExpr + " || " + cat
+		return withBase(basePath, advBase+"&category=custom&category_expr="+url.QueryEscape(newExpr)+tagPart)
+	default:
+		newExpr, removed := removeTopLevelOrTerm(currentExpr, cat)
+		if removed {
+			newExpr = strings.TrimSpace(newExpr)
+			if newExpr == "" {
+				return withBase(basePath, advBase+tagPart)
+			}
+			if isSimpleExpr(newExpr) {
+				return withBase(basePath, advBase+"&category="+url.QueryEscape(newExpr)+tagPart)
+			}
+			return withBase(basePath, advBase+"&category=custom&category_expr="+url.QueryEscape(newExpr)+tagPart)
+		}
+		// not a top-level term → add with OR
+		return withBase(basePath, advBase+"&category=custom&category_expr="+url.QueryEscape(currentExpr+" || "+cat)+tagPart)
+	}
+}
+
+// isSimpleExpr reports whether expr is a single identifier with no operators.
+func isSimpleExpr(expr string) bool {
+	expr = strings.TrimSpace(expr)
+	if expr == "" {
+		return false
+	}
+	for i := 0; i < len(expr); i++ {
+		c := expr[i]
+		if c == '|' || c == '&' || c == '(' || c == ')' || c == ' ' || c == '\t' {
+			return false
+		}
+	}
+	return true
+}
+
+// tagClickURL returns the URL produced by clicking a tag chip.
+// categoryFilter and categoryExpr represent the current category state and are
+// preserved in the generated URL.
+func tagClickURL(basePath, currentTagExpr, tag, categoryFilter, categoryExpr string) string {
+	base := "/?advanced&filter=1"
+	catPart := ""
+	switch categoryFilter {
+	case "", "all":
+		// no category param needed
+	case "custom":
+		if categoryExpr != "" {
+			catPart = "&category=custom&category_expr=" + url.QueryEscape(categoryExpr)
+		}
+	default:
+		catPart = "&category=" + url.QueryEscape(categoryFilter)
+	}
+
+	switch {
+	case currentTagExpr == "":
+		return withBase(basePath, base+catPart+"&tag_expr="+url.QueryEscape(tag))
+	case currentTagExpr == tag:
+		return withBase(basePath, base+catPart)
+	case isSimpleExpr(currentTagExpr):
+		return withBase(basePath, base+catPart+"&tag_expr="+url.QueryEscape(currentTagExpr+" || "+tag))
+	default:
+		newExpr, removed := removeTopLevelOrTerm(currentTagExpr, tag)
+		if removed {
+			if newExpr == "" {
+				return withBase(basePath, base+catPart)
+			}
+			return withBase(basePath, base+catPart+"&tag_expr="+url.QueryEscape(newExpr))
+		}
+		// tag not a top-level OR term → add it
+		return withBase(basePath, base+catPart+"&tag_expr="+url.QueryEscape(currentTagExpr+" || "+tag))
+	}
+}
+
+// isActiveTag reports whether tag appears as a top-level OR term in tagExpr.
+func isActiveTag(tagExpr, tag string) bool {
+	if tagExpr == "" {
+		return false
+	}
+	for _, t := range splitTopLevelOr(tagExpr) {
+		if strings.TrimSpace(t) == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// isActiveCat reports whether cat appears as a top-level OR term in the
+// effective category expression derived from categoryFilter and categoryExpr.
+func isActiveCat(categoryFilter, categoryExpr, cat string) bool {
+	expr := effectiveCatExpr(categoryFilter, categoryExpr)
+	if expr == "" {
+		return false
+	}
+	for _, t := range splitTopLevelOr(expr) {
+		if strings.TrimSpace(t) == cat {
+			return true
+		}
+	}
+	return false
+}
+
+// splitTopLevelOr splits expr by "|" or "||" operators that are not inside
+// parentheses, returning the raw sub-expression strings.
+func splitTopLevelOr(expr string) []string {
+	var terms []string
+	depth, start := 0, 0
+	for i := 0; i < len(expr); i++ {
+		switch expr[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+		case '|':
+			if depth == 0 {
+				terms = append(terms, expr[start:i])
+				if i+1 < len(expr) && expr[i+1] == '|' {
+					i++ // skip second '|'
+				}
+				start = i + 1
+			}
+		}
+	}
+	return append(terms, expr[start:])
+}
+
+// removeTopLevelOrTerm removes all top-level OR terms that are exactly tag
+// (simple identifier match only; terms like "c && d" are never matched).
+// Returns the resulting expression and whether any removal occurred.
+func removeTopLevelOrTerm(expr, tag string) (string, bool) {
+	terms := splitTopLevelOr(expr)
+	kept := make([]string, 0, len(terms))
+	removed := false
+	for _, t := range terms {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if t == tag {
+			removed = true
+			continue
+		}
+		kept = append(kept, t)
+	}
+	if !removed {
+		return expr, false
+	}
+	return strings.Join(kept, " || "), true
 }
 
 func humanizeErr(err error) string {

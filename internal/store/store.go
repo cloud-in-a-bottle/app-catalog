@@ -67,9 +67,13 @@ type Publish struct {
 }
 
 type AppListFilter struct {
-	Query    string
-	SourceID string
-	Tag      string
+	Query        string
+	SearchAll    bool   // when true, Query also matches tags and categories
+	SourceID     string
+	Tag          string
+	TagExpr      string // logic expression e.g. "rss && privacy"; overrides Tag when set
+	Category     string
+	CategoryExpr string // logic expression e.g. "ai || privacy"; overrides Category when set
 }
 
 func Open(path string) (*Store, error) {
@@ -414,16 +418,42 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 		args = append(args, filter.SourceID)
 	}
 	if filter.Query != "" {
-		q := strings.ToLower(filter.Query)
-		query += ` AND (
-			lower(ca.app_id) LIKE ? OR
-			lower(ca.title) LIKE ? OR
-			lower(ca.description) LIKE ?
-		)`
-		like := "%" + q + "%"
-		args = append(args, like, like, like)
+		like := "%" + strings.ToLower(filter.Query) + "%"
+		if filter.SearchAll {
+			query += ` AND (
+				lower(ca.app_id) LIKE ? OR
+				lower(ca.title) LIKE ? OR
+				lower(ca.description) LIKE ? OR
+				LOWER(ca.tags_json) LIKE ? OR
+				LOWER(ca.categories_json) LIKE ?
+			)`
+			args = append(args, like, like, like, like, like)
+		} else {
+			query += ` AND (
+				lower(ca.app_id) LIKE ? OR
+				lower(ca.title) LIKE ? OR
+				lower(ca.description) LIKE ?
+			)`
+			args = append(args, like, like, like)
+		}
 	}
-	if filter.Tag != "" {
+	if filter.CategoryExpr != "" {
+		csql, cargs, err := exprToSQL(filter.CategoryExpr, "ca.categories_json")
+		if err == nil && csql != "" {
+			query += " AND " + csql
+			args = append(args, cargs...)
+		}
+	} else if filter.Category != "" {
+		query += ` AND ca.categories_json LIKE ?`
+		args = append(args, "%\""+filter.Category+"\"%")
+	}
+	if filter.TagExpr != "" {
+		tsql, targs, err := exprToSQL(filter.TagExpr, "ca.tags_json")
+		if err == nil && tsql != "" {
+			query += " AND " + tsql
+			args = append(args, targs...)
+		}
+	} else if filter.Tag != "" {
 		query += ` AND ca.tags_json LIKE ?`
 		args = append(args, "%\""+filter.Tag+"\"%")
 	}
@@ -469,6 +499,31 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 	}
 
 	return out, nil
+}
+
+func (s *Store) ListAllCategories(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT DISTINCT je.value
+		FROM catalog_apps ca
+		JOIN sources src ON src.id = ca.source_id
+		JOIN json_each(ca.categories_json) je
+		WHERE src.enabled = 1 AND je.value != ''
+		ORDER BY je.value
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query categories: %w", err)
+	}
+	defer rows.Close()
+
+	var out []string
+	for rows.Next() {
+		var cat string
+		if err := rows.Scan(&cat); err != nil {
+			return nil, fmt.Errorf("scan category: %w", err)
+		}
+		out = append(out, cat)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) GetCatalogApp(ctx context.Context, sourceID, appID string) (CatalogApp, error) {
