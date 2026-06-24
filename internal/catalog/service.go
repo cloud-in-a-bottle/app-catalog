@@ -218,7 +218,9 @@ func safeFeedURL(raw string) string {
 // itself fails, so the original error path is never silently swallowed.
 func markSyncFailed(ctx context.Context, st *store.Store, sourceID, msg string) {
 	if err := st.MarkSourceSyncFailed(ctx, sourceID, msg); err != nil {
-		log.Printf("sync: failed to record sync failure for source %s: %v", sourceID, err)
+		safeSourceID := strings.ReplaceAll(sourceID, "\n", "")
+		safeSourceID = strings.ReplaceAll(safeSourceID, "\r", "")
+		log.Printf("sync: failed to record sync failure for source %s: %v", safeSourceID, err)
 	}
 }
 
