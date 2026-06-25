@@ -7,11 +7,11 @@
 <body>
   <h1>OpenHost Catalog</h1>
   <nav>
-    <a href="{{withBase .BasePath "/"}}">Catalog</a>
+    <a href="{{withBase .BasePath "/"}}"{{if not .Advanced}} class="nav-active"{{end}}>Catalog</a>
     <a href="{{withBase .BasePath "/sources"}}">Sources</a>
+    <a href="{{withBase .BasePath "/?advanced"}}"{{if .Advanced}} class="nav-active"{{end}}>Advanced Search</a>
     <span class="spacer"></span>
   </nav>
-  <hr>
 
   {{if .FailedSyncNames}}
   <div class="sync-warning">
@@ -22,15 +22,10 @@
   {{if .Advanced}}
 
   {{/* ── Advanced search ─────────────────────────────────────── */}}
-  <a href="{{withBase .BasePath "/"}}" class="back-link">← Categories</a>
-  <div class="cat-banner" style="background:{{catGradient "advanced"}}">
-    <span class="cat-icon">🔎</span>
-    <span class="cat-banner-label">Advanced Search</span>
-  </div>
   <form method="get" action="{{withBase .BasePath "/"}}" class="adv-form">
     <input type="hidden" name="advanced" value="1">
     <input type="hidden" name="filter" value="1">
-    <label>Search<br><input type="text" name="q" value="{{.Query}}" placeholder="Name, id, or description" style="width:250px;"></label>
+    <label>Term<br><input type="text" name="q" value="{{.Query}}" placeholder="Name, id, or description" style="width:250px;"></label>
     <label>Source<br>
       <select name="source" style="width:150px;">
         <option value="">All</option>
@@ -54,7 +49,7 @@
     <label>Tags<br>
       <input type="text" name="tag_expr" value="{{.TagExpr}}" placeholder="e.g. rss &#38;&#38; privacy" style="width:200px;">
     </label>
-    <div class="adv-form-submit"><button type="submit">Filter</button></div>
+    <div class="adv-form-submit"><button type="submit">Search</button></div>
   </form>
   <script>
   function toggleCustom(prefix) {
@@ -70,7 +65,7 @@
 
   {{/* ── Category view ────────────────────────────────────────── */}}
   <a href="{{withBase .BasePath "/"}}" class="back-link">← Categories</a>
-  <div class="cat-banner" style="background:{{catGradient .CategoryFilter}}">
+  <div class="cat-banner" style="--cat-bg:{{catBaseColor .CategoryFilter}};background:{{catGradient .CategoryFilter}}">
     <span class="cat-icon">{{if eq .CategoryFilter "all"}}📦{{else}}{{catIcon .CategoryFilter}}{{end}}</span>
     <span class="cat-banner-label">{{if eq .CategoryFilter "all"}}All Apps{{else}}{{catLabel .CategoryFilter}}{{end}}</span>
   </div>
@@ -98,15 +93,12 @@
   <h2>Browse by Category</h2>
   <div class="category-grid">
     {{range .AllCategories}}
-    <a href="{{withBase $.BasePath (printf "/?category=%s" .)}}" class="cat-btn" style="background:{{catGradient .}}">
+    <a href="{{withBase $.BasePath (printf "/?category=%s" .)}}" class="cat-btn" style="--cat-bg:{{catBaseColor .}};background:{{catGradient .}}">
       <span class="cat-icon">{{catIcon .}}</span><span>{{catLabel .}}</span>
     </a>
     {{end}}
-    <a href="{{withBase .BasePath "/?category=all"}}" class="cat-btn" style="background:{{catGradient "all"}}">
+    <a href="{{withBase .BasePath "/?category=all"}}" class="cat-btn" style="--cat-bg:{{catBaseColor "all"}};background:{{catGradient "all"}}">
       <span class="cat-icon">📦</span><span>All Apps</span>
-    </a>
-    <a href="{{withBase .BasePath "/?advanced"}}" class="cat-btn cat-btn-advanced">
-      <span class="cat-icon">🔎</span><span>Advanced Search</span>
     </a>
   </div>
   {{end}}
@@ -122,24 +114,20 @@
 <table>
   <tr>
     <th>App</th>
-    <th title="OpenHost integration rating">Rating</th>
     <th>Categories &amp; Tags</th>
     <th>Actions</th>
   </tr>
   {{range .Apps}}
   <tr>
     <td>
-      <div class="app-title">{{.Title}}</div>
-      <div class="app-desc">{{.Description}}</div>
-    </td>
-    <td class="rating">
-      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5">{{stars .OpenhostIntegrationScore}}</span>{{end}}
+      <div class="app-title">{{highlight .Title $.Query}}</div>
+      <div class="app-desc">{{highlight .Description $.Query}}</div>
     </td>
     <td>
       {{if or .Categories .Tags}}
       <div class="tag-list">
-        {{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}
-        {{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}
+        {{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}
+        {{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}
       </div>
       {{else}}-{{end}}
     </td>
@@ -165,7 +153,6 @@
 <table>
   <tr>
     <th>App</th>
-    <th title="OpenHost integration rating">Rating</th>
     <th>Categories</th>
     <th>Tags</th>
     <th>Actions</th>
@@ -173,14 +160,11 @@
   {{range .Apps}}
   <tr>
     <td>
-      <div class="app-title">{{.Title}}</div>
-      <div class="app-desc">{{.Description}}</div>
+      <div class="app-title">{{highlight .Title $.Query}}</div>
+      <div class="app-desc">{{highlight .Description $.Query}}</div>
     </td>
-    <td class="rating">
-      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5">{{stars .OpenhostIntegrationScore}}</span>{{end}}
-    </td>
-    <td>{{if .Categories}}<div class="tag-list">{{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}</div>{{else}}-{{end}}</td>
-    <td>{{if .Tags}}<div class="tag-list">{{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}</div>{{else}}-{{end}}</td>
+    <td>{{if .Categories}}<div class="tag-list">{{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}</div>{{else}}-{{end}}</td>
+    <td>{{if .Tags}}<div class="tag-list">{{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}</div>{{else}}-{{end}}</td>
     <td>
       <div class="app-actions">
         <button type="button" class="btn btn-primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>

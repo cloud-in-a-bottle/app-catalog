@@ -7,11 +7,11 @@
 <body>
   <h1>OpenHost Catalog</h1>
   <nav>
-    <a href="{{withBase .BasePath "/"}}">Catalog</a>
+    <a href="{{withBase .BasePath "/"}}" class="nav-active">Catalog</a>
     <a href="{{withBase .BasePath "/sources"}}">Sources</a>
+    <a href="{{withBase .BasePath "/?advanced"}}">Advanced Search</a>
     <span class="spacer"></span>
   </nav>
-  <hr>
 
   <p><a href="{{withBase .BasePath "/"}}">&larr; Back to catalog</a></p>
   <h2>{{.App.Title}}</h2>
@@ -21,8 +21,7 @@
     <tr><th>Catalog ID</th><td style="font-family: monospace;">{{.App.SourceID}}/{{.App.AppID}}</td></tr>
     <tr><th>Source</th><td>{{.App.SourceName}}</td></tr>
     <tr><th>Repository</th><td style="font-family: monospace; word-break: break-word;">{{.App.RepoURL}}{{if .App.RepoRef}}@{{.App.RepoRef}}{{end}}</td></tr>
-    <tr><th>OpenHost integration</th><td>{{if .App.OpenhostIntegrationScore}}<span class="stars">{{stars .App.OpenhostIntegrationScore}}</span> <span class="rating-num">{{.App.OpenhostIntegrationScore}}/5</span>{{else}}-{{end}}</td></tr>
-    <tr><th>Tags</th><td>{{if .App.Tags}}{{join .App.Tags ", "}}{{else}}-{{end}}</td></tr>
+<tr><th>Tags</th><td>{{if .App.Tags}}{{join .App.Tags ", "}}{{else}}-{{end}}</td></tr>
     <tr><th>Categories</th><td>{{if .App.Categories}}{{join .App.Categories ", "}}{{else}}-{{end}}</td></tr>
     <tr><th>Website</th><td>{{if .App.WebsiteURL}}<a href="{{.App.WebsiteURL}}" target="_blank" rel="noopener">{{.App.WebsiteURL}}</a>{{else}}-{{end}}</td></tr>
     <tr><th>Docs</th><td>{{if .App.DocsURL}}<a href="{{.App.DocsURL}}" target="_blank" rel="noopener">{{.App.DocsURL}}</a>{{else}}-{{end}}</td></tr>

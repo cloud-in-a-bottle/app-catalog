@@ -72,11 +72,11 @@ type indexPageData struct {
 }
 
 type appPageData struct {
-	BasePath       string
-	App            store.CatalogApp
-	Error          string
-	RouterBaseURL  string
-	AddAppURL      string
+	BasePath      string
+	App           store.CatalogApp
+	Error         string
+	RouterBaseURL string
+	AddAppURL     string
 }
 
 type sourcesPageData struct {
@@ -107,14 +107,17 @@ type publishStatusResponse struct {
 
 func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 	tmpl, err := template.New("templates").Funcs(template.FuncMap{
-		"withBase":    withBase,
-		"join":        strings.Join,
-		"statusClass": statusClass,
-		"stars":       renderStars,
-		"addAppURL":   buildAddAppURL,
-		"catGradient": categoryGradient,
-		"catLabel":    categoryLabel,
-		"catIcon":     categoryIcon,
+		"withBase":     withBase,
+		"join":         strings.Join,
+		"statusClass":  statusClass,
+		"stars":        renderStars,
+		"addAppURL":    buildAddAppURL,
+		"catGradient":  categoryGradient,
+		"catBaseColor": catBaseColor,
+		"highlight":    highlightText,
+		"matchesQuery": queryMatchesChip,
+		"catLabel":     categoryLabel,
+		"catIcon":      categoryIcon,
 		"tagClickURL":  tagClickURL,
 		"catChipURL":   catChipURL,
 		"isActiveTag":  isActiveTag,
@@ -948,27 +951,89 @@ func makeSlug(in string) string {
 	return in
 }
 
+// highlightText wraps every case-insensitive occurrence of query in text with
+// a <mark> element. Text outside matches is HTML-escaped normally.
+func highlightText(text, query string) template.HTML {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return template.HTML(template.HTMLEscapeString(text))
+	}
+	lower := strings.ToLower(text)
+	var b strings.Builder
+	pos := 0
+	for pos < len(text) {
+		idx := strings.Index(lower[pos:], q)
+		if idx == -1 {
+			b.WriteString(template.HTMLEscapeString(text[pos:]))
+			break
+		}
+		idx += pos
+		b.WriteString(template.HTMLEscapeString(text[pos:idx]))
+		b.WriteString("<mark>")
+		b.WriteString(template.HTMLEscapeString(text[idx : idx+len(q)]))
+		b.WriteString("</mark>")
+		pos = idx + len(q)
+	}
+	return template.HTML(b.String())
+}
+
+// queryMatchesChip returns true when query is a substring of term (or vice
+// versa), normalising hyphens to spaces so "data-liberation" matches
+// "data liberation" and similar.
+func queryMatchesChip(query, term string) bool {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return false
+	}
+	t := strings.ToLower(term)
+	tNorm := strings.ReplaceAll(t, "-", " ")
+	return strings.Contains(t, q) || strings.Contains(tNorm, q) ||
+		strings.Contains(q, t) || strings.Contains(q, tNorm)
+}
+
+// categoryBaseColors holds one primary color per category slug. The gradient
+// and contrast color are both derived from this via tintHex.
+var categoryBaseColors = map[string]string{
+	"all":             "#CFC7B3",
+	"advanced":        "#0B292B",
+	"tag":             "#8EAFCB",
+	"ai":              "#CECD0C",
+	"data-liberation": "#4B4C08",
+	"development":     "#000000",
+	"entertainment":   "#E4999A",
+	"monitoring":      "#FCEFD4",
+	"networking":      "#58defc",
+	"privacy":         "#492222",
+	"productivity":    "#F50D00",
+	"publishing":      "#45d266",
+	"search":          "#E9ECD9",
+	"utility":         "#7455d2",
+}
+
+// tintHex blends a #rrggbb color toward white by amount (0 = unchanged, 1 = white).
+func tintHex(hex string, amount float64) string {
+	var r, g, b int
+	fmt.Sscanf(hex[1:], "%02x%02x%02x", &r, &g, &b)
+	blend := func(c int) int { return c + int(float64(255-c)*amount) }
+	return fmt.Sprintf("#%02x%02x%02x", blend(r), blend(g), blend(b))
+}
+
 func categoryGradient(cat string) template.CSS {
-	gradients := map[string]string{
-		"all":             "linear-gradient(to top right, #CFC7B3, #E5E0D5)", // Strength
-		"advanced":        "linear-gradient(to top right, #0B292B, #79898A)", // Confusion
-		"tag":             "linear-gradient(to top right, #8EAFCB, #C1D3E2)", // Peace
-		"ai":              "linear-gradient(to top right, #CECD0C, #E4E479)", // Energy
-		"data-liberation": "linear-gradient(to top right, #4B4C08, #9C9D77)", // Envy
-		"development":     "linear-gradient(to top right, #000000, #737373)", // Indifference
-		"entertainment":   "linear-gradient(to top right, #E4999A, #F0C7C7)", // Belonging
-		"monitoring":      "linear-gradient(to top right, #FCEFD4, #FDF6E7)", // Clarity
-		"networking":      "linear-gradient(to top right, #97630C, #C6A979)", // Curiosity
-		"privacy":         "linear-gradient(to top right, #492222, #9B8585)", // Courage
-		"productivity":    "linear-gradient(to top right, #F50D00, #FA7A73)", // Confidence
-		"publishing":      "linear-gradient(to top right, #D26645, #E6AB99)", // Respect
-		"search":          "linear-gradient(to top right, #E9ECD9, #F3F5EA)", // Inspiration
-		"utility":         "linear-gradient(to top right, #F5D6A0, #FAE8CB)", // Comfort
+	base, ok := categoryBaseColors[cat]
+	if !ok {
+		base = "#4b5563"
 	}
-	if g, ok := gradients[cat]; ok {
-		return template.CSS(g)
+	return template.CSS("linear-gradient(to top right, " + base + ", " + tintHex(base, 0.5) + ")")
+}
+
+// catBaseColor returns the gradient midpoint (25% tint) as the representative
+// color for CSS contrast-color().
+func catBaseColor(cat string) template.CSS {
+	base, ok := categoryBaseColors[cat]
+	if !ok {
+		return "#666666"
 	}
-	return "linear-gradient(to top right, #4b5563, #9ca3af)"
+	return template.CSS(tintHex(base, 0.25))
 }
 
 func categoryIcon(cat string) string {
