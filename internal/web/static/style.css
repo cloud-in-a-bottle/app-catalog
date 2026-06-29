@@ -132,3 +132,5 @@ nav .spacer { flex: 1; }
 .stars { color: #d48806; font-family: serif; letter-spacing: 1px; font-size: 1.05em; white-space: nowrap; }
 .rating { text-align: center; white-space: nowrap; }
 .rating-num { color: #666; font-weight: normal; font-size: 0.9em; margin-left: 0.3em; }
+.rating-unrated { color: #aaa; }
+.rating-explanation { color: #666; font-size: 0.9em; margin-top: 0.35em; max-width: 32em; white-space: normal; line-height: 1.35; }
