@@ -18,10 +18,29 @@ import (
 var validIDPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
 // maxScoreExplanationLen caps the integration-score explanation ingested from a
-// feed. It mirrors the (slightly tighter) limit enforced by the official feed's
-// generate.py; the extra headroom tolerates third-party feeds without letting
-// them inject unbounded text into the catalog UI.
+// feed, measured in runes (not bytes). It mirrors the (slightly tighter) limit
+// enforced by the official feed's generate.py; the extra headroom tolerates
+// third-party feeds without letting them inject unbounded text into the catalog
+// UI.
 const maxScoreExplanationLen = 400
+
+// clampRunes truncates s to at most maxRunes Unicode code points. Truncating on
+// a rune boundary (rather than a byte boundary) keeps the result valid UTF-8
+// even when the input contains multi-byte characters whose bytes straddle the
+// limit; otherwise the stored/rendered string could end in a partial rune.
+func clampRunes(s string, maxRunes int) string {
+	if maxRunes <= 0 {
+		return ""
+	}
+	n := 0
+	for i := range s { // ranging a string iterates rune start offsets
+		if n == maxRunes {
+			return s[:i]
+		}
+		n++
+	}
+	return s
+}
 
 // AllowedCategories is the canonical set of broad categories that feed apps
 // may use. Unknown values are silently dropped at ingest so feeds from older
@@ -197,9 +216,7 @@ func normalizeFeedApp(sourceID string, in sourceFeedApp) (store.CatalogApp, bool
 	if score == 0 {
 		explanation = ""
 	}
-	if len(explanation) > maxScoreExplanationLen {
-		explanation = explanation[:maxScoreExplanationLen]
-	}
+	explanation = clampRunes(explanation, maxScoreExplanationLen)
 
 	out := store.CatalogApp{
 		SourceID:                            sourceID,
