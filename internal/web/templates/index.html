@@ -133,7 +133,7 @@
       <div class="app-desc">{{.Description}}</div>
     </td>
     <td class="rating">
-      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5{{if .OpenhostIntegrationScoreExplanation}} — {{.OpenhostIntegrationScoreExplanation}}{{end}}">{{stars .OpenhostIntegrationScore}}</span>{{else}}<span class="rating-unrated" title="Not yet rated for OpenHost integration.">—</span>{{end}}
+      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5">{{stars .OpenhostIntegrationScore}}</span>{{else}}<span class="rating-unrated" title="Not yet rated for OpenHost integration.">—</span>{{end}}
     </td>
     <td>
       {{if or .Categories .Tags}}
@@ -177,7 +177,7 @@
       <div class="app-desc">{{.Description}}</div>
     </td>
     <td class="rating">
-      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5{{if .OpenhostIntegrationScoreExplanation}} — {{.OpenhostIntegrationScoreExplanation}}{{end}}">{{stars .OpenhostIntegrationScore}}</span>{{else}}<span class="rating-unrated" title="Not yet rated for OpenHost integration.">—</span>{{end}}
+      {{if .OpenhostIntegrationScore}}<span class="stars" title="OpenHost integration: {{.OpenhostIntegrationScore}}/5">{{stars .OpenhostIntegrationScore}}</span>{{else}}<span class="rating-unrated" title="Not yet rated for OpenHost integration.">—</span>{{end}}
     </td>
     <td>{{if .Categories}}<div class="tag-list">{{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}</div>{{else}}-{{end}}</td>
     <td>{{if .Tags}}<div class="tag-list">{{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}</div>{{else}}-{{end}}</td>
