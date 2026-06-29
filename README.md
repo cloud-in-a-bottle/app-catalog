@@ -42,8 +42,7 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
       "categories": ["search"],
       "website_url": "https://docs.searxng.org",
       "docs_url": "https://github.com/imbue-openhost/openhost-searxng#readme",
-      "openhost_integration_score": 5,
-      "openhost_integration_score_explanation": "Stateless public search; no accounts to manage and nothing to leak."
+      "openhost_integration_score": 5
     }
   ]
 }
@@ -55,28 +54,24 @@ Required fields: `name`, `title`, `repo_url`. All others may be omitted.
 
 ## Integration score
 
-Each app may carry two related fields:
+Each app may carry an `openhost_integration_score` — an integer **1-5** rating
+how natively the app integrates with OpenHost (SSO quality, data/secret
+conventions, guest handling). It is **not** a rating of the upstream project's
+quality.
 
-- `openhost_integration_score` — an integer **1-5** rating how natively the app
-  integrates with OpenHost (SSO quality, data/secret conventions, guest
-  handling). It is **not** a rating of the upstream project's quality.
-- `openhost_integration_score_explanation` — a one-sentence, human-readable
-  rationale for the score.
-
-Both are optional. The catalog treats a missing/`0` score as **unrated** and
+The score is optional. The catalog treats a missing/`0` score as **unrated** and
 renders it as "—" / "Unrated"; it does not mean a score of zero. The catalog
-clamps the score to 1-5, drops any explanation on an unrated app, and truncates
-overly long explanations.
+clamps the score to 1-5 on ingest.
 
 The canonical rubric and the checklist for assigning a score live in the feed
 repo: [openhost-apps/SCORING.md](https://github.com/imbue-openhost/openhost-apps/blob/main/SCORING.md).
 
 ### How it's surfaced
 
-- **Catalog listing**: a star rating per app; hovering shows `N/5` plus the
-  explanation. Higher-rated apps sort first; unrated apps sort last.
-- **App detail page**: the star rating, `N/5`, and the full explanation. The
-  "OpenHost integration" label links to the rubric.
+- **Catalog listing**: a star rating per app; hovering shows `N/5`. Higher-rated
+  apps sort first; unrated apps sort last.
+- **App detail page**: the star rating and `N/5`. The "OpenHost integration"
+  label links to the rubric.
 
 ## Runtime configuration
 

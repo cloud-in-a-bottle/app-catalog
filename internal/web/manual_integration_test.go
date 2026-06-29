@@ -70,12 +70,12 @@ func feed(apps string) string {
 	return `{"schema":"openhost.catalog.v1","source_id":"official","source_name":"OpenHost Official","generated_at":"2026-01-01T00:00:00Z","apps":[` + apps + `]}`
 }
 
-func app(name, title string, score int, expl string) string {
-	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s","openhost_integration_score":%d,"openhost_integration_score_explanation":%q}`,
-		name, title, name, score, expl)
+func app(name, title string, score int) string {
+	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s","openhost_integration_score":%d}`,
+		name, title, name, score)
 }
 
-// TestManualIntegration runs a large battery of rendering/behavior checks.
+// TestManualIntegration runs a battery of rendering/behavior checks.
 func TestManualIntegration(t *testing.T) {
 	type tc struct {
 		name string
@@ -83,9 +83,9 @@ func TestManualIntegration(t *testing.T) {
 	}
 
 	cases := []tc{
-		{"detail shows score and explanation", func(t *testing.T) {
+		{"detail shows score", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("miniflux", "Miniflux", 4, "Owner auto-login via SSO.")))
+			fs := feedServer(t, feed(app("miniflux", "Miniflux", 4)))
 			defer fs.Close()
 			if err := addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json"); err != nil {
 				t.Fatalf("sync: %v", err)
@@ -97,17 +97,14 @@ func TestManualIntegration(t *testing.T) {
 			if !strings.Contains(body, "4/5") {
 				t.Error("missing 4/5")
 			}
-			if !strings.Contains(body, "Owner auto-login via SSO.") {
-				t.Error("missing explanation text")
-			}
-			if !strings.Contains(body, "rating-explanation") {
-				t.Error("missing rating-explanation block")
+			if !strings.Contains(body, "stars") {
+				t.Error("missing stars span")
 			}
 		}},
 
 		{"detail unrated shows Unrated not a score", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("foo", "Foo", 0, "")))
+			fs := feedServer(t, feed(app("foo", "Foo", 0)))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			code, body := get(t, srv, "/apps/official/foo")
@@ -117,52 +114,14 @@ func TestManualIntegration(t *testing.T) {
 			if !strings.Contains(body, "Unrated") {
 				t.Error("expected 'Unrated' label")
 			}
-			if strings.Contains(body, "rating-explanation") {
-				t.Error("unrated app should not show explanation block")
-			}
 			if strings.Contains(body, "0/5") {
 				t.Error("unrated app should not show 0/5")
 			}
 		}},
 
-		{"detail rated-but-no-explanation shows stars no block", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("bar", "Bar", 3, "")))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			code, body := get(t, srv, "/apps/official/bar")
-			if code != 200 {
-				t.Fatalf("code %d", code)
-			}
-			if !strings.Contains(body, "3/5") {
-				t.Error("missing 3/5")
-			}
-			if strings.Contains(body, "rating-explanation") {
-				t.Error("no explanation -> no block")
-			}
-		}},
-
-		{"detail explanation HTML-escaped (XSS)", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			payload := "<script>alert(1)</script>"
-			fs := feedServer(t, feed(app("evil", "Evil", 5, payload)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			code, body := get(t, srv, "/apps/official/evil")
-			if code != 200 {
-				t.Fatalf("code %d", code)
-			}
-			if strings.Contains(body, "<script>alert(1)</script>") {
-				t.Error("explanation not escaped -> XSS")
-			}
-			if !strings.Contains(body, "&lt;script&gt;") {
-				t.Error("expected escaped script tag")
-			}
-		}},
-
 		{"detail title XSS escaped", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("t", "<img src=x onerror=alert(1)>", 5, "x")))
+			fs := feedServer(t, feed(`{"name":"t","title":"<img src=x onerror=alert(1)>","repo_url":"https://github.com/x/t","openhost_integration_score":5}`))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, body := get(t, srv, "/apps/official/t")
@@ -173,7 +132,7 @@ func TestManualIntegration(t *testing.T) {
 
 		{"detail rubric link present", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("m", "M", 4, "x")))
+			fs := feedServer(t, feed(app("m", "M", 4)))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, body := get(t, srv, "/apps/official/m")
@@ -185,10 +144,10 @@ func TestManualIntegration(t *testing.T) {
 		{"listing sorts by score desc then title", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
 			body := feed(strings.Join([]string{
-				app("low", "ZebraLow", 2, "l"),
-				app("hi1", "Bravo", 5, "h"),
-				app("hi2", "Alpha", 5, "h"),
-				app("un", "Mid", 0, ""),
+				app("low", "ZebraLow", 2),
+				app("hi1", "Bravo", 5),
+				app("hi2", "Alpha", 5),
+				app("un", "Mid", 0),
 			}, ","))
 			fs := feedServer(t, body)
 			defer fs.Close()
@@ -203,34 +162,20 @@ func TestManualIntegration(t *testing.T) {
 			}
 		}},
 
-		{"listing tooltip includes explanation", func(t *testing.T) {
+		{"listing tooltip shows score", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("m", "M", 4, "Tooltip text here")))
+			fs := feedServer(t, feed(app("m", "M", 4)))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, page := get(t, srv, "/?advanced=1&filter=1")
-			if !strings.Contains(page, "Tooltip text here") {
-				t.Error("explanation not in listing tooltip")
-			}
 			if !strings.Contains(page, "OpenHost integration: 4/5") {
 				t.Error("missing tooltip score")
 			}
 		}},
 
-		{"listing tooltip explanation attribute-escaped", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("m", "M", 4, `quote " and <tag>`)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, page := get(t, srv, "/?advanced=1&filter=1")
-			if strings.Contains(page, `title="OpenHost integration: 4/5 — quote " and <tag>"`) {
-				t.Error("tooltip not attribute-escaped")
-			}
-		}},
-
 		{"listing unrated shows dash", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("u", "U", 0, "")))
+			fs := feedServer(t, feed(app("u", "U", 0)))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, page := get(t, srv, "/?advanced=1&filter=1")
@@ -241,7 +186,7 @@ func TestManualIntegration(t *testing.T) {
 
 		{"listing rating header links rubric", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("m", "M", 4, "x")))
+			fs := feedServer(t, feed(app("m", "M", 4)))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, page := get(t, srv, "/?advanced=1&filter=1")
@@ -252,7 +197,7 @@ func TestManualIntegration(t *testing.T) {
 
 		{"ingest clamps score above 5", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"big","title":"Big","repo_url":"https://github.com/x/big","openhost_integration_score":99,"openhost_integration_score_explanation":"x"}`))
+			fs := feedServer(t, feed(`{"name":"big","title":"Big","repo_url":"https://github.com/x/big","openhost_integration_score":99}`))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, body := get(t, srv, "/apps/official/big")
@@ -263,63 +208,12 @@ func TestManualIntegration(t *testing.T) {
 
 		{"ingest clamps negative score to unrated", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"neg","title":"Neg","repo_url":"https://github.com/x/neg","openhost_integration_score":-4,"openhost_integration_score_explanation":"x"}`))
+			fs := feedServer(t, feed(`{"name":"neg","title":"Neg","repo_url":"https://github.com/x/neg","openhost_integration_score":-4}`))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, body := get(t, srv, "/apps/official/neg")
 			if !strings.Contains(body, "Unrated") {
 				t.Error("negative score should render unrated")
-			}
-		}},
-
-		{"ingest drops explanation on unrated", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"orph","title":"Orph","repo_url":"https://github.com/x/orph","openhost_integration_score":0,"openhost_integration_score_explanation":"should be dropped"}`))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, body := get(t, srv, "/apps/official/orph")
-			if strings.Contains(body, "should be dropped") {
-				t.Error("explanation should be dropped for unrated app")
-			}
-		}},
-
-		{"ingest clamps long explanation to 400", func(t *testing.T) {
-			_, svc, st := newTestServer(t)
-			long := strings.Repeat("z", 500)
-			fs := feedServer(t, feed(app("lng", "Lng", 3, long)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			g, err := st.GetCatalogApp(context.Background(), "official", "lng")
-			if err != nil {
-				t.Fatalf("get: %v", err)
-			}
-			if len(g.OpenhostIntegrationScoreExplanation) != 400 {
-				t.Errorf("explanation len = %d, want 400", len(g.OpenhostIntegrationScoreExplanation))
-			}
-		}},
-
-		{"ingest trims whitespace explanation", func(t *testing.T) {
-			_, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("trm", "Trm", 3, "   padded   ")))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			g, _ := st.GetCatalogApp(context.Background(), "official", "trm")
-			if g.OpenhostIntegrationScoreExplanation != "padded" {
-				t.Errorf("got %q, want trimmed", g.OpenhostIntegrationScoreExplanation)
-			}
-		}},
-
-		{"ingest omitted explanation field defaults empty", func(t *testing.T) {
-			_, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"noexp","title":"NoExp","repo_url":"https://github.com/x/noexp","openhost_integration_score":3}`))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			g, _ := st.GetCatalogApp(context.Background(), "official", "noexp")
-			if g.OpenhostIntegrationScoreExplanation != "" {
-				t.Errorf("got %q, want empty", g.OpenhostIntegrationScoreExplanation)
-			}
-			if g.OpenhostIntegrationScore != 3 {
-				t.Errorf("score %d want 3", g.OpenhostIntegrationScore)
 			}
 		}},
 
@@ -354,10 +248,9 @@ func TestManualIntegration(t *testing.T) {
 			}
 		}},
 
-		{"re-sync updates explanation and score", func(t *testing.T) {
+		{"re-sync updates score", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			// A mutable feed handler whose body we swap between syncs.
-			body := feed(app("up", "Up", 3, "old text"))
+			body := feed(app("up", "Up", 3))
 			fs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(body))
@@ -365,17 +258,14 @@ func TestManualIntegration(t *testing.T) {
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, b1 := get(t, srv, "/apps/official/up")
-			if !strings.Contains(b1, "old text") {
+			if !strings.Contains(b1, "3/5") {
 				t.Fatal("setup failed")
 			}
-			body = feed(app("up", "Up", 5, "new text"))
+			body = feed(app("up", "Up", 5))
 			if err := svc.SyncSource(context.Background(), "official"); err != nil {
 				t.Fatalf("resync: %v", err)
 			}
 			_, b2 := get(t, srv, "/apps/official/up")
-			if !strings.Contains(b2, "new text") || strings.Contains(b2, "old text") {
-				t.Error("re-sync did not update explanation")
-			}
 			if !strings.Contains(b2, "5/5") {
 				t.Error("re-sync did not update score")
 			}
@@ -383,25 +273,25 @@ func TestManualIntegration(t *testing.T) {
 
 		{"multi-source same app id isolated", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fsA := feedServer(t, feed(app("dup", "DupA", 5, "from A")))
+			fsA := feedServer(t, feed(app("dup", "DupA", 5)))
 			defer fsA.Close()
-			fsB := feedServer(t, feed(app("dup", "DupB", 2, "from B")))
+			fsB := feedServer(t, feed(app("dup", "DupB", 2)))
 			defer fsB.Close()
 			addAndSync(t, svc, st, "srcA", "A", fsA.URL+"/catalog.json")
 			addAndSync(t, svc, st, "srcB", "B", fsB.URL+"/catalog.json")
 			_, bA := get(t, srv, "/apps/srcA/dup")
 			_, bB := get(t, srv, "/apps/srcB/dup")
-			if !strings.Contains(bA, "from A") || !strings.Contains(bA, "5/5") {
+			if !strings.Contains(bA, "5/5") {
 				t.Error("srcA wrong")
 			}
-			if !strings.Contains(bB, "from B") || !strings.Contains(bB, "2/5") {
+			if !strings.Contains(bB, "2/5") {
 				t.Error("srcB wrong")
 			}
 		}},
 
 		{"detail 404 for missing app", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("real", "Real", 3, "x")))
+			fs := feedServer(t, feed(app("real", "Real", 3)))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			code, _ := get(t, srv, "/apps/official/doesnotexist")
@@ -413,25 +303,13 @@ func TestManualIntegration(t *testing.T) {
 		{"all 5 score levels render correct N/5", func(t *testing.T) {
 			for s := 1; s <= 5; s++ {
 				srv, svc, st := newTestServer(t)
-				fs := feedServer(t, feed(app("lvl", "Lvl", s, "x")))
+				fs := feedServer(t, feed(app("lvl", "Lvl", s)))
 				addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 				_, body := get(t, srv, "/apps/official/lvl")
 				if !strings.Contains(body, fmt.Sprintf("%d/5", s)) {
 					t.Errorf("score %d not rendered", s)
 				}
 				fs.Close()
-			}
-		}},
-
-		{"star glyph count matches score", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("st", "St", 3, "x")))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, body := get(t, srv, "/apps/official/st")
-			// renderStars produces filled+empty to 5; expect at least the stars span.
-			if !strings.Contains(body, "stars") {
-				t.Error("missing stars span")
 			}
 		}},
 	}
