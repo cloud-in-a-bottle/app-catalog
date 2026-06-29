@@ -31,20 +31,21 @@ type Source struct {
 }
 
 type CatalogApp struct {
-	SourceID                 string
-	SourceName               string
-	AppID                    string
-	Title                    string
-	Description              string
-	RepoURL                  string
-	RepoRef                  string
-	IconURL                  string
-	Tags                     []string
-	Categories               []string
-	WebsiteURL               string
-	DocsURL                  string
-	OpenhostIntegrationScore int // 1-5 when supplied, 0 means unrated
-	UpdatedAt                string
+	SourceID                            string
+	SourceName                          string
+	AppID                               string
+	Title                               string
+	Description                         string
+	RepoURL                             string
+	RepoRef                             string
+	IconURL                             string
+	Tags                                []string
+	Categories                          []string
+	WebsiteURL                          string
+	DocsURL                             string
+	OpenhostIntegrationScore            int    // 1-5 when supplied, 0 means unrated
+	OpenhostIntegrationScoreExplanation string // one-sentence rationale; "" when unrated
+	UpdatedAt                           string
 }
 
 type Publish struct {
@@ -68,7 +69,7 @@ type Publish struct {
 
 type AppListFilter struct {
 	Query        string
-	SearchAll    bool   // when true, Query also matches tags and categories
+	SearchAll    bool // when true, Query also matches tags and categories
 	SourceID     string
 	Tag          string
 	TagExpr      string // logic expression e.g. "rss && privacy"; overrides Tag when set
@@ -186,6 +187,7 @@ func (s *Store) Init(ctx context.Context) error {
 
 	addColumns := []string{
 		`ALTER TABLE catalog_apps ADD COLUMN openhost_integration_score INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE catalog_apps ADD COLUMN openhost_integration_score_explanation TEXT NOT NULL DEFAULT ''`,
 	}
 	for _, stmt := range addColumns {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
@@ -314,8 +316,8 @@ func (s *Store) ReplaceCatalogAppsForSource(ctx context.Context, sourceID string
 	insertStmt := `INSERT INTO catalog_apps
 	(source_id, app_id, title, description, repo_url, repo_ref, icon_url,
 	 tags_json, categories_json, website_url, docs_url,
-	 openhost_integration_score, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	 openhost_integration_score, openhost_integration_score_explanation, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	now := nowString()
 	for _, app := range apps {
@@ -343,6 +345,7 @@ func (s *Store) ReplaceCatalogAppsForSource(ctx context.Context, sourceID string
 			app.WebsiteURL,
 			app.DocsURL,
 			app.OpenhostIntegrationScore,
+			app.OpenhostIntegrationScoreExplanation,
 			now,
 		); err != nil {
 			return fmt.Errorf("insert catalog app %s/%s: %w", sourceID, app.AppID, err)
@@ -406,6 +409,7 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 		ca.website_url,
 		ca.docs_url,
 		ca.openhost_integration_score,
+		ca.openhost_integration_score_explanation,
 		ca.updated_at
 	FROM catalog_apps ca
 	JOIN sources s ON s.id = ca.source_id
@@ -486,6 +490,7 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 			&app.WebsiteURL,
 			&app.DocsURL,
 			&app.OpenhostIntegrationScore,
+			&app.OpenhostIntegrationScoreExplanation,
 			&app.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan catalog app row: %w", err)
@@ -543,6 +548,7 @@ func (s *Store) GetCatalogApp(ctx context.Context, sourceID, appID string) (Cata
 			ca.website_url,
 			ca.docs_url,
 			ca.openhost_integration_score,
+			ca.openhost_integration_score_explanation,
 			ca.updated_at
 		 FROM catalog_apps ca
 		 JOIN sources s ON s.id = ca.source_id
@@ -567,6 +573,7 @@ func (s *Store) GetCatalogApp(ctx context.Context, sourceID, appID string) (Cata
 		&app.WebsiteURL,
 		&app.DocsURL,
 		&app.OpenhostIntegrationScore,
+		&app.OpenhostIntegrationScoreExplanation,
 		&app.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

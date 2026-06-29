@@ -36,12 +36,13 @@ func TestIntegrationScoreRoundTrip(t *testing.T) {
 
 	apps := []CatalogApp{
 		{
-			SourceID:                 "official",
-			AppID:                    "searxng",
-			Title:                    "SearXNG",
-			Description:              "Privacy-respecting metasearch",
-			RepoURL:                  "https://example.invalid/searxng",
-			OpenhostIntegrationScore: 5,
+			SourceID:                            "official",
+			AppID:                               "searxng",
+			Title:                               "SearXNG",
+			Description:                         "Privacy-respecting metasearch",
+			RepoURL:                             "https://example.invalid/searxng",
+			OpenhostIntegrationScore:            5,
+			OpenhostIntegrationScoreExplanation: "Stateless public search; nothing to leak.",
 		},
 		{
 			SourceID:    "official",
@@ -62,6 +63,9 @@ func TestIntegrationScoreRoundTrip(t *testing.T) {
 	if got5.OpenhostIntegrationScore != 5 {
 		t.Errorf("rated app: got score %d, want 5", got5.OpenhostIntegrationScore)
 	}
+	if got5.OpenhostIntegrationScoreExplanation != "Stateless public search; nothing to leak." {
+		t.Errorf("rated app: got explanation %q, want it preserved", got5.OpenhostIntegrationScoreExplanation)
+	}
 
 	got0, err := store.GetCatalogApp(ctx, "official", "unrated")
 	if err != nil {
@@ -69,6 +73,9 @@ func TestIntegrationScoreRoundTrip(t *testing.T) {
 	}
 	if got0.OpenhostIntegrationScore != 0 {
 		t.Errorf("unrated app: got score %d, want 0", got0.OpenhostIntegrationScore)
+	}
+	if got0.OpenhostIntegrationScoreExplanation != "" {
+		t.Errorf("unrated app: got explanation %q, want empty", got0.OpenhostIntegrationScoreExplanation)
 	}
 }
 
