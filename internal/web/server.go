@@ -72,11 +72,11 @@ type indexPageData struct {
 }
 
 type appPageData struct {
-	BasePath       string
-	App            store.CatalogApp
-	Error          string
-	RouterBaseURL  string
-	AddAppURL      string
+	BasePath      string
+	App           store.CatalogApp
+	Error         string
+	RouterBaseURL string
+	AddAppURL     string
 }
 
 type sourcesPageData struct {
@@ -115,10 +115,10 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 		"catGradient": categoryGradient,
 		"catLabel":    categoryLabel,
 		"catIcon":     categoryIcon,
-		"tagClickURL":  tagClickURL,
-		"catChipURL":   catChipURL,
-		"isActiveTag":  isActiveTag,
-		"isActiveCat":  isActiveCat,
+		"tagClickURL": tagClickURL,
+		"catChipURL":  catChipURL,
+		"isActiveTag": isActiveTag,
+		"isActiveCat": isActiveCat,
 	}).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
@@ -957,7 +957,6 @@ func categoryGradient(cat string) template.CSS {
 		"data-liberation": "linear-gradient(to top right, #4B4C08, #9C9D77)", // Envy
 		"development":     "linear-gradient(to top right, #000000, #737373)", // Indifference
 		"entertainment":   "linear-gradient(to top right, #E4999A, #F0C7C7)", // Belonging
-		"monitoring":      "linear-gradient(to top right, #FCEFD4, #FDF6E7)", // Clarity
 		"networking":      "linear-gradient(to top right, #97630C, #C6A979)", // Curiosity
 		"privacy":         "linear-gradient(to top right, #492222, #9B8585)", // Courage
 		"productivity":    "linear-gradient(to top right, #F50D00, #FA7A73)", // Confidence
@@ -977,7 +976,6 @@ func categoryIcon(cat string) string {
 		"data-liberation": "🔓",
 		"development":     "💻",
 		"entertainment":   "🎮",
-		"monitoring":      "📊",
 		"networking":      "🌐",
 		"privacy":         "🔒",
 		"productivity":    "⚡",
@@ -997,7 +995,6 @@ func categoryLabel(cat string) string {
 		"data-liberation": "Data Liberation",
 		"development":     "Development",
 		"entertainment":   "Entertainment",
-		"monitoring":      "Monitoring",
 		"networking":      "Networking",
 		"privacy":         "Privacy",
 		"productivity":    "Productivity",
