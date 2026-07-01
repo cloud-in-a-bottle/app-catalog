@@ -68,7 +68,7 @@ type Publish struct {
 
 type AppListFilter struct {
 	Query        string
-	SearchAll    bool   // when true, Query also matches tags and categories
+	SearchAll    bool // when true, Query also matches tags and categories
 	SourceID     string
 	Tag          string
 	TagExpr      string // logic expression e.g. "rss && privacy"; overrides Tag when set
@@ -195,12 +195,14 @@ func (s *Store) Init(ctx context.Context) error {
 		}
 	}
 
-	// Drop the earlier has/missing/vocab columns introduced by a prior
-	// schema version. Data in them is fully regenerable from the feed
-	// so losing it is safe.
+	// Drop columns introduced by prior schema versions that are no longer
+	// used: the earlier has/missing/vocab columns, and the per-app
+	// integration-score explanation. Their data is fully regenerable from the
+	// feed (or simply removed), so losing it is safe.
 	dropColumns := []string{
 		`ALTER TABLE catalog_apps DROP COLUMN integration_json`,
 		`ALTER TABLE sources DROP COLUMN integrations_vocab_json`,
+		`ALTER TABLE catalog_apps DROP COLUMN openhost_integration_score_explanation`,
 	}
 	for _, stmt := range dropColumns {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {

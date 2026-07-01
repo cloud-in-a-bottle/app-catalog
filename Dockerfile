@@ -4,7 +4,15 @@ WORKDIR /src
 
 COPY go.mod .
 COPY go.sum .
-RUN go mod download
+# Retry module download and fall back to direct VCS fetches: the default
+# proxy.golang.org intermittently returns 403 from some hosting providers,
+# which would otherwise fail the build non-deterministically.
+RUN for i in 1 2 3; do \
+        go mod download && break; \
+        echo "go mod download failed (attempt $i), retrying with GOPROXY=direct"; \
+        GOPROXY=direct go mod download && break; \
+        sleep 5; \
+    done
 
 COPY . .
 ARG TARGETOS=linux

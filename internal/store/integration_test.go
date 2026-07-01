@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 )
@@ -150,5 +151,57 @@ func TestIntegrationMigrationIdempotent(t *testing.T) {
 	defer store2.Close()
 	if err := store2.Init(context.Background()); err != nil {
 		t.Fatalf("init 2 (migration not idempotent): %v", err)
+	}
+}
+
+// TestMigrationDropsExplanationColumn verifies that a database that already has
+// the removed openhost_integration_score_explanation column (from the prior
+// schema version) has it dropped when Init runs the current migration.
+func TestMigrationDropsExplanationColumn(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "catalog.db")
+
+	st, err := Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if err := st.Init(context.Background()); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	st.Close()
+
+	// Simulate the previously-merged schema by re-adding the column.
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("reopen raw: %v", err)
+	}
+	if _, err := db.Exec(`ALTER TABLE catalog_apps ADD COLUMN openhost_integration_score_explanation TEXT NOT NULL DEFAULT ''`); err != nil {
+		t.Fatalf("seed legacy column: %v", err)
+	}
+	db.Close()
+
+	// Re-running Init should drop the column.
+	st2, err := Open(path)
+	if err != nil {
+		t.Fatalf("open 2: %v", err)
+	}
+	defer st2.Close()
+	if err := st2.Init(context.Background()); err != nil {
+		t.Fatalf("init 2: %v", err)
+	}
+
+	db2, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("verify open: %v", err)
+	}
+	defer db2.Close()
+	var n int
+	if err := db2.QueryRow(
+		`SELECT count(*) FROM pragma_table_info('catalog_apps') WHERE name='openhost_integration_score_explanation'`,
+	).Scan(&n); err != nil {
+		t.Fatalf("query columns: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("explanation column still present after migration (count=%d)", n)
 	}
 }

@@ -21,16 +21,16 @@ var validIDPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 // may use. Unknown values are silently dropped at ingest so feeds from older
 // sources remain compatible while the catalog enforces the taxonomy.
 var AllowedCategories = map[string]struct{}{
-	"ai":               {},
-	"data-liberation":  {},
-	"development":      {},
-	"entertainment":    {},
-	"networking":       {},
-	"privacy":          {},
-	"productivity":     {},
-	"publishing":       {},
-	"search":           {},
-	"utility":          {},
+	"ai":              {},
+	"data-liberation": {},
+	"development":     {},
+	"entertainment":   {},
+	"networking":      {},
+	"privacy":         {},
+	"productivity":    {},
+	"publishing":      {},
+	"search":          {},
+	"utility":         {},
 }
 
 type Service struct {
