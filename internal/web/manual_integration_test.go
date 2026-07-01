@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,8 +25,7 @@ func feedServer(t *testing.T, body string) *httptest.Server {
 }
 
 // newTestServer builds a Server backed by a temp DB, plus the catalog service
-// used to sync. AllowHTTPRepoURLs/AllowFileRepoURLs aren't needed; the source
-// URL is the httptest server.
+// used to sync.
 func newTestServer(t *testing.T) (*Server, *catalog.Service, *store.Store) {
 	t.Helper()
 	dir := t.TempDir()
@@ -70,58 +70,35 @@ func feed(apps string) string {
 	return `{"schema":"openhost.catalog.v1","source_id":"official","source_name":"OpenHost Official","generated_at":"2026-01-01T00:00:00Z","apps":[` + apps + `]}`
 }
 
-func app(name, title string, score int) string {
-	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s","openhost_integration_score":%d}`,
-		name, title, name, score)
+// app builds a minimal feed entry with name, title, and repo_url.
+func app(name, title string) string {
+	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s"}`, name, title, name)
 }
 
-// TestManualIntegration runs a battery of rendering/behavior checks.
+// appWith builds a feed entry with tags and categories.
+func appWith(name, title string, tags, cats []string) string {
+	tagsJSON, _ := json.Marshal(tags)
+	catsJSON, _ := json.Marshal(cats)
+	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s","tags":%s,"categories":%s}`,
+		name, title, name, tagsJSON, catsJSON)
+}
+
+// appWithDesc builds a feed entry with a description field.
+func appWithDesc(name, title, desc string) string {
+	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s","description":%q}`,
+		name, title, name, desc)
+}
+
 func TestManualIntegration(t *testing.T) {
 	type tc struct {
 		name string
 		fn   func(t *testing.T)
 	}
-
 	cases := []tc{
-		{"detail shows score", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("miniflux", "Miniflux", 4)))
-			defer fs.Close()
-			if err := addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json"); err != nil {
-				t.Fatalf("sync: %v", err)
-			}
-			code, body := get(t, srv, "/apps/official/miniflux")
-			if code != 200 {
-				t.Fatalf("code %d", code)
-			}
-			if !strings.Contains(body, "4/5") {
-				t.Error("missing 4/5")
-			}
-			if !strings.Contains(body, "stars") {
-				t.Error("missing stars span")
-			}
-		}},
-
-		{"detail unrated shows Unrated not a score", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("foo", "Foo", 0)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			code, body := get(t, srv, "/apps/official/foo")
-			if code != 200 {
-				t.Fatalf("code %d", code)
-			}
-			if !strings.Contains(body, "Unrated") {
-				t.Error("expected 'Unrated' label")
-			}
-			if strings.Contains(body, "0/5") {
-				t.Error("unrated app should not show 0/5")
-			}
-		}},
-
+		// --- Detail page ---
 		{"detail title XSS escaped", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"t","title":"<img src=x onerror=alert(1)>","repo_url":"https://github.com/x/t","openhost_integration_score":5}`))
+			fs := feedServer(t, feed(`{"name":"t","title":"<img src=x onerror=alert(1)>","repo_url":"https://github.com/x/t"}`))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			_, body := get(t, srv, "/apps/official/t")
@@ -130,168 +107,9 @@ func TestManualIntegration(t *testing.T) {
 			}
 		}},
 
-		{"detail rubric link present", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("m", "M", 4)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, body := get(t, srv, "/apps/official/m")
-			if !strings.Contains(body, "SCORING.md") {
-				t.Error("missing rubric link on detail page")
-			}
-		}},
-
-		{"listing sorts by score desc then title", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			body := feed(strings.Join([]string{
-				app("low", "ZebraLow", 2),
-				app("hi1", "Bravo", 5),
-				app("hi2", "Alpha", 5),
-				app("un", "Mid", 0),
-			}, ","))
-			fs := feedServer(t, body)
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, page := get(t, srv, "/?advanced=1&filter=1")
-			iAlpha := strings.Index(page, "Alpha")
-			iBravo := strings.Index(page, "Bravo")
-			iZebra := strings.Index(page, "ZebraLow")
-			iMid := strings.Index(page, "Mid")
-			if !(iAlpha < iBravo && iBravo < iZebra && iZebra < iMid) {
-				t.Errorf("bad order: Alpha=%d Bravo=%d Zebra=%d Mid=%d", iAlpha, iBravo, iZebra, iMid)
-			}
-		}},
-
-		{"listing tooltip shows score", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("m", "M", 4)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, page := get(t, srv, "/?advanced=1&filter=1")
-			if !strings.Contains(page, "OpenHost integration: 4/5") {
-				t.Error("missing tooltip score")
-			}
-		}},
-
-		{"listing unrated shows dash", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("u", "U", 0)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, page := get(t, srv, "/?advanced=1&filter=1")
-			if !strings.Contains(page, "rating-unrated") {
-				t.Error("unrated listing should show rating-unrated marker")
-			}
-		}},
-
-		{"listing rating header links rubric", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("m", "M", 4)))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, page := get(t, srv, "/?advanced=1&filter=1")
-			if !strings.Contains(page, "SCORING.md") {
-				t.Error("missing rubric link in listing header")
-			}
-		}},
-
-		{"ingest clamps score above 5", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"big","title":"Big","repo_url":"https://github.com/x/big","openhost_integration_score":99}`))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, body := get(t, srv, "/apps/official/big")
-			if !strings.Contains(body, "5/5") {
-				t.Error("score>5 should clamp to 5")
-			}
-		}},
-
-		{"ingest clamps negative score to unrated", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"neg","title":"Neg","repo_url":"https://github.com/x/neg","openhost_integration_score":-4}`))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, body := get(t, srv, "/apps/official/neg")
-			if !strings.Contains(body, "Unrated") {
-				t.Error("negative score should render unrated")
-			}
-		}},
-
-		{"ingest omitted score field defaults unrated", func(t *testing.T) {
-			_, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"nos","title":"NoS","repo_url":"https://github.com/x/nos"}`))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			g, _ := st.GetCatalogApp(context.Background(), "official", "nos")
-			if g.OpenhostIntegrationScore != 0 {
-				t.Errorf("score %d want 0", g.OpenhostIntegrationScore)
-			}
-		}},
-
-		{"feed with JSON bool score is rejected entirely", func(t *testing.T) {
-			_, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"b","title":"B","repo_url":"https://github.com/x/b","openhost_integration_score":true}`))
-			defer fs.Close()
-			err := addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			if err == nil {
-				t.Error("expected sync to fail on bool score (type mismatch)")
-			}
-		}},
-
-		{"feed with string score is rejected entirely", func(t *testing.T) {
-			_, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(`{"name":"s","title":"S","repo_url":"https://github.com/x/s","openhost_integration_score":"4"}`))
-			defer fs.Close()
-			err := addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			if err == nil {
-				t.Error("expected sync to fail on string score")
-			}
-		}},
-
-		{"re-sync updates score", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			body := feed(app("up", "Up", 3))
-			fs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(body))
-			}))
-			defer fs.Close()
-			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-			_, b1 := get(t, srv, "/apps/official/up")
-			if !strings.Contains(b1, "3/5") {
-				t.Fatal("setup failed")
-			}
-			body = feed(app("up", "Up", 5))
-			if err := svc.SyncSource(context.Background(), "official"); err != nil {
-				t.Fatalf("resync: %v", err)
-			}
-			_, b2 := get(t, srv, "/apps/official/up")
-			if !strings.Contains(b2, "5/5") {
-				t.Error("re-sync did not update score")
-			}
-		}},
-
-		{"multi-source same app id isolated", func(t *testing.T) {
-			srv, svc, st := newTestServer(t)
-			fsA := feedServer(t, feed(app("dup", "DupA", 5)))
-			defer fsA.Close()
-			fsB := feedServer(t, feed(app("dup", "DupB", 2)))
-			defer fsB.Close()
-			addAndSync(t, svc, st, "srcA", "A", fsA.URL+"/catalog.json")
-			addAndSync(t, svc, st, "srcB", "B", fsB.URL+"/catalog.json")
-			_, bA := get(t, srv, "/apps/srcA/dup")
-			_, bB := get(t, srv, "/apps/srcB/dup")
-			if !strings.Contains(bA, "5/5") {
-				t.Error("srcA wrong")
-			}
-			if !strings.Contains(bB, "2/5") {
-				t.Error("srcB wrong")
-			}
-		}},
-
 		{"detail 404 for missing app", func(t *testing.T) {
 			srv, svc, st := newTestServer(t)
-			fs := feedServer(t, feed(app("real", "Real", 3)))
+			fs := feedServer(t, feed(app("real", "Real")))
 			defer fs.Close()
 			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
 			code, _ := get(t, srv, "/apps/official/doesnotexist")
@@ -300,16 +118,372 @@ func TestManualIntegration(t *testing.T) {
 			}
 		}},
 
-		{"all 5 score levels render correct N/5", func(t *testing.T) {
-			for s := 1; s <= 5; s++ {
-				srv, svc, st := newTestServer(t)
-				fs := feedServer(t, feed(app("lvl", "Lvl", s)))
-				addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-				_, body := get(t, srv, "/apps/official/lvl")
-				if !strings.Contains(body, fmt.Sprintf("%d/5", s)) {
-					t.Errorf("score %d not rendered", s)
-				}
-				fs.Close()
+		{"multi-source same app id isolated", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fsA := feedServer(t, feed(app("dup", "DupA")))
+			defer fsA.Close()
+			fsB := feedServer(t, feed(app("dup", "DupB")))
+			defer fsB.Close()
+			addAndSync(t, svc, st, "srcA", "A", fsA.URL+"/catalog.json")
+			addAndSync(t, svc, st, "srcB", "B", fsB.URL+"/catalog.json")
+			_, bA := get(t, srv, "/apps/srcA/dup")
+			_, bB := get(t, srv, "/apps/srcB/dup")
+			if !strings.Contains(bA, "DupA") {
+				t.Error("srcA shows wrong title")
+			}
+			if !strings.Contains(bB, "DupB") {
+				t.Error("srcB shows wrong title")
+			}
+		}},
+
+		// --- Text search ---
+		{"text search finds app by title", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(app("miniflux", "Miniflux")))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?q=miniflux&filter=1")
+			if !strings.Contains(page, "Miniflux") {
+				t.Error("title search did not return matching app")
+			}
+		}},
+
+		{"text search finds app by description", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(appWithDesc("rss", "RSS Reader", "self-hosted feed aggregator")))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?q=aggregator&filter=1")
+			if !strings.Contains(page, "RSS Reader") {
+				t.Error("description search did not return matching app")
+			}
+		}},
+
+		{"text search is case-insensitive", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(app("ghost", "Ghost")))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?q=GHOST&filter=1")
+			if !strings.Contains(page, "Ghost") {
+				t.Error("case-insensitive search failed")
+			}
+		}},
+
+		{"text search no match yields empty listing", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(app("ghost", "Ghost")))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?q=zzznomatch&filter=1")
+			if strings.Contains(page, "Ghost") {
+				t.Error("non-matching search returned unexpected app")
+			}
+		}},
+
+		{"main page search also matches tags and categories", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(appWith("searxng", "SearXNG", []string{"metasearch"}, []string{"search"})))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// Main search (no ?advanced) uses SearchAll=true: matches tags and categories too.
+			_, page := get(t, srv, "/?q=metasearch")
+			if !strings.Contains(page, "SearXNG") {
+				t.Error("main search should match on tag")
+			}
+			_, page2 := get(t, srv, "/?q=search")
+			if !strings.Contains(page2, "SearXNG") {
+				t.Error("main search should match on category")
+			}
+		}},
+
+		{"advanced search does not match tags or categories", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(appWith("searxng", "SearXNG", []string{"metasearch"}, []string{"search"})))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// Advanced search (SearchAll=false) only matches title, description, app_id.
+			_, page := get(t, srv, "/?advanced&q=metasearch&filter=1")
+			if strings.Contains(page, "SearXNG") {
+				t.Error("advanced search should not match on tags")
+			}
+		}},
+
+		// --- Category filter ---
+		{"category filter returns only matching apps", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("privapp", "PrivApp", nil, []string{"privacy"}),
+				appWith("aiapp", "AIApp", nil, []string{"ai"}),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// Simple category click (no ?advanced, no ?filter) shows matching apps.
+			_, page := get(t, srv, "/?category=privacy")
+			if !strings.Contains(page, "PrivApp") {
+				t.Error("expected privacy app in category results")
+			}
+			if strings.Contains(page, "AIApp") {
+				t.Error("unexpected ai app in privacy results")
+			}
+		}},
+
+		{"category=all sentinel shows all apps", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("a", "AppA", nil, []string{"privacy"}),
+				appWith("b", "AppB", nil, []string{"ai"}),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?category=all")
+			if !strings.Contains(page, "AppA") || !strings.Contains(page, "AppB") {
+				t.Error("category=all should show all apps regardless of category")
+			}
+		}},
+
+		{"category custom OR expression matches either category", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("priv", "PrivApp", nil, []string{"privacy"}),
+				appWith("ai", "AIApp", nil, []string{"ai"}),
+				appWith("prod", "ProdApp", nil, []string{"productivity"}),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// privacy || ai
+			_, page := get(t, srv, "/?advanced&filter=1&category=custom&category_expr=privacy+%7C%7C+ai")
+			if !strings.Contains(page, "PrivApp") || !strings.Contains(page, "AIApp") {
+				t.Error("OR expression should match both privacy and ai apps")
+			}
+			if strings.Contains(page, "ProdApp") {
+				t.Error("OR expression should not match productivity app")
+			}
+		}},
+
+		{"category custom AND expression requires both categories", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("both", "BothApp", nil, []string{"privacy", "ai"}),
+				appWith("onlyprivacy", "OnlyPrivacy", nil, []string{"privacy"}),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// privacy && ai
+			_, page := get(t, srv, "/?advanced&filter=1&category=custom&category_expr=privacy+%26%26+ai")
+			if !strings.Contains(page, "BothApp") {
+				t.Error("AND expression should match app with both categories")
+			}
+			if strings.Contains(page, "OnlyPrivacy") {
+				t.Error("AND expression should not match app with only one category")
+			}
+		}},
+
+		{"unknown category in feed silently dropped at ingest", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			// "monitoring" is not in AllowedCategories; "utility" is.
+			fs := feedServer(t, feed(appWith("mon", "Monitor", nil, []string{"monitoring", "utility"})))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			code, _ := get(t, srv, "/apps/official/mon")
+			if code != 200 {
+				t.Errorf("app with unknown category should still be accessible, got %d", code)
+			}
+			_, page := get(t, srv, "/?category=utility")
+			if !strings.Contains(page, "Monitor") {
+				t.Error("app should appear under its valid category")
+			}
+			_, pageM := get(t, srv, "/?category=monitoring")
+			if strings.Contains(pageM, "Monitor") {
+				t.Error("unknown category should have been stripped; app should not appear under it")
+			}
+		}},
+
+		// --- Tag filter ---
+		{"tag filter single tag returns only matching apps", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("a", "AppA", []string{"rss"}, nil),
+				appWith("b", "AppB", []string{"email"}, nil),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?advanced&filter=1&tag_expr=rss")
+			if !strings.Contains(page, "AppA") {
+				t.Error("rss-tagged app missing from tag filter results")
+			}
+			if strings.Contains(page, "AppB") {
+				t.Error("email-tagged app should not appear in rss filter results")
+			}
+		}},
+
+		{"tag OR expression returns apps with either tag", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("a", "AppA", []string{"rss"}, nil),
+				appWith("b", "AppB", []string{"email"}, nil),
+				appWith("c", "AppC", []string{"other"}, nil),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// rss || email
+			_, page := get(t, srv, "/?advanced&filter=1&tag_expr=rss+%7C%7C+email")
+			if !strings.Contains(page, "AppA") || !strings.Contains(page, "AppB") {
+				t.Error("OR tag filter should return apps with either tag")
+			}
+			if strings.Contains(page, "AppC") {
+				t.Error("app with neither tag should not appear")
+			}
+		}},
+
+		{"tag AND expression requires both tags", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("both", "BothTags", []string{"rss", "privacy"}, nil),
+				appWith("one", "OneTag", []string{"rss"}, nil),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// rss && privacy
+			_, page := get(t, srv, "/?advanced&filter=1&tag_expr=rss+%26%26+privacy")
+			if !strings.Contains(page, "BothTags") {
+				t.Error("AND tag filter should match app with both tags")
+			}
+			if strings.Contains(page, "OneTag") {
+				t.Error("AND tag filter should not match app with only one tag")
+			}
+		}},
+
+		{"single pipe and ampersand normalized to double operators", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("a", "AppA", []string{"rss"}, nil),
+				appWith("b", "AppB", []string{"email"}, nil),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// Single | should work the same as ||
+			_, page := get(t, srv, "/?advanced&filter=1&tag_expr=rss+%7C+email")
+			if !strings.Contains(page, "AppA") || !strings.Contains(page, "AppB") {
+				t.Error("single | should be treated as OR")
+			}
+		}},
+
+		// --- Source filter ---
+		{"source filter narrows results to one source", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fsA := feedServer(t, feed(app("app", "AppFromA")))
+			fsB := feedServer(t, feed(app("app", "AppFromB")))
+			defer fsA.Close()
+			defer fsB.Close()
+			addAndSync(t, svc, st, "srcA", "A", fsA.URL+"/catalog.json")
+			addAndSync(t, svc, st, "srcB", "B", fsB.URL+"/catalog.json")
+			_, page := get(t, srv, "/?advanced&filter=1&source=srcA")
+			if !strings.Contains(page, "AppFromA") {
+				t.Error("source filter should show srcA app")
+			}
+			if strings.Contains(page, "AppFromB") {
+				t.Error("source filter should hide srcB app")
+			}
+		}},
+
+		// --- Combined filters ---
+		{"category and tag filter applied together", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWith("match", "Match", []string{"rss"}, []string{"privacy"}),
+				appWith("wrongtag", "WrongTag", []string{"email"}, []string{"privacy"}),
+				appWith("wrongcat", "WrongCat", []string{"rss"}, []string{"ai"}),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?advanced&filter=1&category=privacy&tag_expr=rss")
+			if !strings.Contains(page, "Match") {
+				t.Error("app matching both category and tag should appear")
+			}
+			if strings.Contains(page, "WrongTag") || strings.Contains(page, "WrongCat") {
+				t.Error("apps not satisfying both filters should be excluded")
+			}
+		}},
+
+		// --- Visibility logic ---
+		{"advanced mode hides apps until filter submitted", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(app("ghost", "Ghost")))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?advanced")
+			if strings.Contains(page, "Ghost") {
+				t.Error("advanced mode should hide apps before filter is submitted")
+			}
+			_, page2 := get(t, srv, "/?advanced&filter=1")
+			if !strings.Contains(page2, "Ghost") {
+				t.Error("advanced mode should show apps after filter is submitted")
+			}
+		}},
+
+		{"category chip shows apps without explicit filter param", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(appWith("ghost", "Ghost", nil, []string{"publishing"})))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			// Clicking a category chip produces /?category=publishing (no ?filter).
+			_, page := get(t, srv, "/?category=publishing")
+			if !strings.Contains(page, "Ghost") {
+				t.Error("category chip navigation should show matching apps without ?filter param")
+			}
+		}},
+
+		// --- Listing order ---
+		{"listing sorts apps alphabetically by title", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				app("c", "Charlie"),
+				app("a", "Alpha"),
+				app("b", "Bravo"),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?advanced&filter=1")
+			iA := strings.Index(page, "Alpha")
+			iB := strings.Index(page, "Bravo")
+			iC := strings.Index(page, "Charlie")
+			if !(iA >= 0 && iB >= 0 && iC >= 0 && iA < iB && iB < iC) {
+				t.Errorf("expected Alpha < Bravo < Charlie in page, got positions %d %d %d", iA, iB, iC)
+			}
+		}},
+
+		// --- Resync ---
+		{"re-sync updates app title", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(app("up", "OldTitle"))
+			fs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(body))
+			}))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, b1 := get(t, srv, "/apps/official/up")
+			if !strings.Contains(b1, "OldTitle") {
+				t.Fatal("setup failed: initial title not found")
+			}
+			body = feed(app("up", "NewTitle"))
+			if err := svc.SyncSource(context.Background(), "official"); err != nil {
+				t.Fatalf("resync: %v", err)
+			}
+			_, b2 := get(t, srv, "/apps/official/up")
+			if !strings.Contains(b2, "NewTitle") {
+				t.Error("re-sync did not update app title")
 			}
 		}},
 	}
