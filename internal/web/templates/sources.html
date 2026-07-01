@@ -8,11 +8,10 @@
   <h1>OpenHost Catalog</h1>
   <nav>
     <a href="{{withBase .BasePath "/"}}">Catalog</a>
-    <a href="{{withBase .BasePath "/sources"}}">Sources</a>
+    <a href="{{withBase .BasePath "/sources"}}" class="nav-active">Sources</a>
+    <a href="{{withBase .BasePath "/?advanced"}}">Advanced Search</a>
     <span class="spacer"></span>
-
   </nav>
-  <hr>
 
   <h2>Add Source</h2>
   {{if .Message}}<p style="color: #080;">{{.Message}}</p>{{end}}

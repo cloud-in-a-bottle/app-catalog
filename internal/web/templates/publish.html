@@ -7,11 +7,11 @@
 <body>
   <h1>OpenHost Catalog</h1>
   <nav>
-    <a href="{{withBase .BasePath "/"}}">Catalog</a>
+    <a href="{{withBase .BasePath "/"}}" class="nav-active">Catalog</a>
     <a href="{{withBase .BasePath "/sources"}}">Sources</a>
+    <a href="{{withBase .BasePath "/?advanced"}}">Advanced Search</a>
     <span class="spacer"></span>
   </nav>
-  <hr>
 
   <div id="publish-page"
        data-status-url="{{withBase .BasePath (printf "/publishes/%s/status.json" .Publish.ID)}}"
