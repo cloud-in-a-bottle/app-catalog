@@ -1,5 +1,8 @@
 bin := "./bin/openhost-catalog"
 
+test:
+    go test ./...
+
 compile:
     mkdir -p ./bin
     go build -o {{bin}} ./cmd/openhost-catalog/
