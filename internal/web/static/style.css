@@ -124,3 +124,10 @@ mark { background: #fef08a; color: inherit; padding: 0 0.1em; border-radius: 2px
 
 .sync-warning { background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em; }
 
+/* OpenHost integration rating --------------------------------------------- */
+
+.stars { color: #f5a623; letter-spacing: 0.1em; }
+.rating-num { color: #666; font-weight: normal; font-size: 0.9em; margin-left: 0.3em; }
+.rating-unrated { color: #aaa; }
+.rating-explanation { color: #666; font-size: 0.9em; margin-top: 0.35em; max-width: 32em; white-space: normal; line-height: 1.35; }
+

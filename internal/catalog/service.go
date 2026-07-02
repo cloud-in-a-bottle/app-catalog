@@ -17,6 +17,31 @@ import (
 
 var validIDPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
+// maxScoreExplanationLen caps the integration-score explanation ingested from a
+// feed, measured in runes (not bytes). It mirrors the (slightly tighter) limit
+// enforced by the official feed's generate.py; the extra headroom tolerates
+// third-party feeds without letting them inject unbounded text into the catalog
+// UI.
+const maxScoreExplanationLen = 400
+
+// clampRunes truncates s to at most maxRunes Unicode code points. Truncating on
+// a rune boundary (rather than a byte boundary) keeps the result valid UTF-8
+// even when the input contains multi-byte characters whose bytes straddle the
+// limit; otherwise the stored/rendered string could end in a partial rune.
+func clampRunes(s string, maxRunes int) string {
+	if maxRunes <= 0 {
+		return ""
+	}
+	n := 0
+	for i := range s { // ranging a string iterates rune start offsets
+		if n == maxRunes {
+			return s[:i]
+		}
+		n++
+	}
+	return s
+}
+
 // AllowedCategories is the canonical set of broad categories that feed apps
 // may use. Unknown values are silently dropped at ingest so feeds from older
 // sources remain compatible while the catalog enforces the taxonomy.
@@ -58,6 +83,9 @@ type sourceFeedApp struct {
 	WebsiteURL               string   `json:"website_url"`
 	DocsURL                  string   `json:"docs_url"`
 	OpenhostIntegrationScore int      `json:"openhost_integration_score"`
+	// OpenhostIntegrationScoreExplanation is a one-sentence human-readable
+	// rationale for the score; "" when unrated or absent.
+	OpenhostIntegrationScoreExplanation string `json:"openhost_integration_score_explanation"`
 }
 
 func NewService(st *store.Store, client *http.Client) *Service {
@@ -182,19 +210,30 @@ func normalizeFeedApp(sourceID string, in sourceFeedApp) (store.CatalogApp, bool
 		score = 5
 	}
 
+	// The explanation is the human-readable rationale for the score. It only
+	// makes sense alongside a real rating, so we drop it for unrated apps
+	// (score 0) and clamp its length to keep feed publishers from injecting
+	// arbitrarily long text into the catalog UI.
+	explanation := strings.TrimSpace(in.OpenhostIntegrationScoreExplanation)
+	if score == 0 {
+		explanation = ""
+	}
+	explanation = clampRunes(explanation, maxScoreExplanationLen)
+
 	out := store.CatalogApp{
-		SourceID:                 sourceID,
-		AppID:                    appID,
-		Title:                    title,
-		Description:              strings.TrimSpace(in.Description),
-		RepoURL:                  repoURL,
-		RepoRef:                  strings.TrimSpace(in.RepoRef),
-		IconURL:                  safeFeedURL(in.IconURL),
-		Tags:                     compactList(in.Tags),
-		Categories:               filterAllowedCategories(compactList(in.Categories)),
-		WebsiteURL:               safeFeedURL(in.WebsiteURL),
-		DocsURL:                  safeFeedURL(in.DocsURL),
-		OpenhostIntegrationScore: score,
+		SourceID:                            sourceID,
+		AppID:                               appID,
+		Title:                               title,
+		Description:                         strings.TrimSpace(in.Description),
+		RepoURL:                             repoURL,
+		RepoRef:                             strings.TrimSpace(in.RepoRef),
+		IconURL:                             safeFeedURL(in.IconURL),
+		Tags:                                compactList(in.Tags),
+		Categories:                          filterAllowedCategories(compactList(in.Categories)),
+		WebsiteURL:                          safeFeedURL(in.WebsiteURL),
+		DocsURL:                             safeFeedURL(in.DocsURL),
+		OpenhostIntegrationScore:            score,
+		OpenhostIntegrationScoreExplanation: explanation,
 	}
 
 	return out, true
