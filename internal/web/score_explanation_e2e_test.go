@@ -234,10 +234,10 @@ func TestE2EScoreClampingViaFeed(t *testing.T) {
 	}
 }
 
-// TestE2ENonIntegerScoreHandled verifies that a non-integer score token
-// makes the feed unusable for that app (Go int decode fails); depending on
-// decoder behavior the whole feed is rejected. Either way, the bad value must
-// never render as a score.
+// TestE2ENonIntegerScoreHandled verifies that a non-integer score token makes
+// the feed unusable: the Go int decode fails, the whole feed sync errors, and
+// the app is never stored, so its detail page returns 404 and the bad value
+// can never render as a score.
 func TestE2ENonIntegerScoreHandled(t *testing.T) {
 	srv, svc, st := newTestServer(t)
 	// 3.5 is a valid JSON number but not a Go int; encoding/json will fail to
@@ -246,13 +246,14 @@ func TestE2ENonIntegerScoreHandled(t *testing.T) {
 	fs := feedServer(t, feed(entry))
 	defer fs.Close()
 	err := addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
-	// Whether or not it errors, the app must not appear with a bogus score.
+	// A non-integer JSON number cannot decode into the int score field, so the
+	// whole feed is rejected: sync must error and the app must be absent (404).
+	if err == nil {
+		t.Fatalf("expected sync error for fractional score, got nil")
+	}
 	code, _ := get(t, srv, "/apps/official/frac")
-	if err == nil && code == 200 {
-		row := detailRow(t, srv, "official", "frac")
-		if strings.Contains(row, "3/5") || strings.Contains(row, "4/5") {
-			t.Errorf("fractional score should not render as an integer rating: %q", row)
-		}
+	if code != http.StatusNotFound {
+		t.Fatalf("expected 404 for app from rejected feed, got %d", code)
 	}
 }
 
