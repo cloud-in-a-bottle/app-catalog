@@ -234,7 +234,7 @@ func TestE2EScoreClampingViaFeed(t *testing.T) {
 	}
 }
 
-// TestE2ENonIntegerScoreFeedRejected verifies that a non-integer score token
+// TestE2ENonIntegerScoreHandled verifies that a non-integer score token
 // makes the feed unusable for that app (Go int decode fails); depending on
 // decoder behavior the whole feed is rejected. Either way, the bad value must
 // never render as a score.
@@ -497,9 +497,10 @@ func TestE2EListingOrderByScore(t *testing.T) {
 	}
 }
 
-// TestE2EMigrationRestoreThenRepopulate is a full upgrade simulation: a store
-// whose explanation column was dropped by the prior schema gets it re-added by
-// Init, and a subsequent sync repopulates and renders the explanation.
+// TestE2EMigrationRestoreThenRepopulate asserts the higher-level invariant that
+// a source sync followed by a re-sync keeps rendering the explanation end to
+// end. The store-level DROP/ADD migration idempotency (the actual column
+// re-add) is covered directly by TestMigrationRestoresExplanationColumn.
 func TestE2EMigrationRestoreThenRepopulate(t *testing.T) {
 	srv, svc, st := newTestServer(t)
 
