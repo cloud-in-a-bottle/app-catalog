@@ -11,6 +11,8 @@ nav a { padding: 0.6em 1.5em; text-decoration: none; color: #555; border: 1px so
 nav a:hover { color: #222; background: #f0f0f0; }
 nav a.nav-active { color: #222; background: #fff; border-color: #ddd; font-weight: 600; }
 nav .spacer { flex: 1; }
+nav a.nav-dashboard { color: #36c; font-size: 0.95em; padding: 0.6em 0.8em; align-self: center; border: none; margin-bottom: 0; }
+nav a.nav-dashboard:hover { color: #36c; background: transparent; text-decoration: underline; }
 .error { color: #c00; }
 .status-running { color: #080; font-weight: bold; }
 .status-error { color: #c00; font-weight: bold; }
