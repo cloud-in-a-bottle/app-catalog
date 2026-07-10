@@ -80,18 +80,20 @@ type appPageData struct {
 }
 
 type sourcesPageData struct {
-	BasePath string
-	Sources  []store.Source
-	Message  string
-	Error    string
+	BasePath      string
+	Sources       []store.Source
+	Message       string
+	Error         string
+	RouterBaseURL string
 }
 
 type publishPageData struct {
-	BasePath     string
-	Publish      store.Publish
-	Terminal     bool
-	RouterAppURL string
-	RouterPage   string
+	BasePath      string
+	Publish       store.Publish
+	Terminal      bool
+	RouterAppURL  string
+	RouterPage    string
+	RouterBaseURL string
 }
 
 type publishStatusResponse struct {
@@ -275,10 +277,11 @@ func (s *Server) handleSourcesPage(w http.ResponseWriter, r *http.Request, messa
 	}
 
 	s.render(w, http.StatusOK, "sources.html", sourcesPageData{
-		BasePath: s.basePathForRequest(r),
-		Sources:  sources,
-		Message:  message,
-		Error:    errMsg,
+		BasePath:      s.basePathForRequest(r),
+		Sources:       sources,
+		Message:       message,
+		Error:         errMsg,
+		RouterBaseURL: s.routerBaseURL(r),
 	})
 }
 
@@ -430,18 +433,20 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 	if !appNamePattern.MatchString(requestedName) {
 		s.render(w, http.StatusBadRequest, "app.html", appPageData{
-			BasePath: s.basePathForRequest(r),
-			App:      app,
-			Error:    "app name must be lowercase alphanumeric with optional interior hyphens",
+			BasePath:      s.basePathForRequest(r),
+			App:           app,
+			Error:         "app name must be lowercase alphanumeric with optional interior hyphens",
+			RouterBaseURL: s.routerBaseURL(r),
 		})
 		return
 	}
 
 	if !s.repoAllowed(app.RepoURL) {
 		s.render(w, http.StatusBadRequest, "app.html", appPageData{
-			BasePath: s.basePathForRequest(r),
-			App:      app,
-			Error:    "repo URL scheme is not allowed by this catalog configuration",
+			BasePath:      s.basePathForRequest(r),
+			App:           app,
+			Error:         "repo URL scheme is not allowed by this catalog configuration",
+			RouterBaseURL: s.routerBaseURL(r),
 		})
 		return
 	}
@@ -551,11 +556,12 @@ func (s *Server) handlePublishPage(w http.ResponseWriter, r *http.Request, publi
 	publish = s.refreshPublishState(r.Context(), publish)
 
 	s.render(w, http.StatusOK, "publish.html", publishPageData{
-		BasePath:     s.basePathForRequest(r),
-		Publish:      publish,
-		Terminal:     isTerminalPublishStatus(publish.Status),
-		RouterAppURL: s.appExternalURL(r, publish.RouterAppName),
-		RouterPage:   s.routerPageURL(r, publish.RouterAppName),
+		BasePath:      s.basePathForRequest(r),
+		Publish:       publish,
+		Terminal:      isTerminalPublishStatus(publish.Status),
+		RouterAppURL:  s.appExternalURL(r, publish.RouterAppName),
+		RouterPage:    s.routerPageURL(r, publish.RouterAppName),
+		RouterBaseURL: s.routerBaseURL(r),
 	})
 }
 
