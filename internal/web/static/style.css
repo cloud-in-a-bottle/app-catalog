@@ -95,6 +95,7 @@ nav a.nav-dashboard:hover { color: #36c; background: transparent; text-decoratio
 
 .app-title { font-size: 1.1em; font-weight: 700; }
 .app-desc { color: #666; margin-top: 0.2em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.app-federation { color: #666; font-size: 0.85em; margin-top: 0.2em; word-break: break-all; }
 
 /* Tag chips --------------------------------------------------------------- */
 
@@ -125,4 +126,6 @@ mark { background: #fef08a; color: inherit; padding: 0 0.1em; border-radius: 2px
 .app-action-btn { width: 5.5em; text-align: center; box-sizing: border-box; font: inherit; line-height: 1.4; display: flex; align-items: center; justify-content: center; }
 
 .sync-warning { background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em; }
+
+.filter-indicator { background: #eef4ff; border: 1px solid #93b4f0; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em; word-break: break-all; }
 

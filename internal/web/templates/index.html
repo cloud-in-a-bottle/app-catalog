@@ -20,6 +20,13 @@
   </div>
   {{end}}
 
+  {{if .FederationURL}}
+  <div class="filter-indicator">
+    Filtering by federation protocol: <code>{{.FederationURL}}</code>
+    &middot; <a href="{{withBase .BasePath "/"}}">Clear filter</a>
+  </div>
+  {{end}}
+
   {{if .Advanced}}
 
   {{/* ── Advanced search ─────────────────────────────────────── */}}
@@ -79,16 +86,17 @@
   <form method="get" action="{{withBase .BasePath "/"}}">
     <div class="landing-search">
       <input type="text" name="q" value="{{.Query}}" placeholder="Search apps by name, category, or tag…" class="landing-search-input"{{if not .Query}} autofocus{{end}}>
+      {{if .FederationURL}}<input type="hidden" name="federation_url" value="{{.FederationURL}}">{{end}}
       <button type="submit" class="btn btn-primary">Search</button>
     </div>
   </form>
 
-  {{if .Query}}
+  {{if or .Query .FederationURL}}
     {{if .Apps}}
-      <p style="color:#888;margin:0.5em 0 0.8em;">{{len .Apps}} result{{if ne (len .Apps) 1}}s{{end}} for <strong>{{.Query}}</strong></p>
+      <p style="color:#888;margin:0.5em 0 0.8em;">{{len .Apps}} result{{if ne (len .Apps) 1}}s{{end}}{{if .Query}} for <strong>{{.Query}}</strong>{{end}}</p>
       {{template "category-app-table" .}}
     {{else}}
-      <p style="color:#888;">No apps found for <strong>{{.Query}}</strong>.</p>
+      <p style="color:#888;">No apps found{{if .Query}} for <strong>{{.Query}}</strong>{{end}}.</p>
     {{end}}
   {{else}}
   <h2>Browse by Category</h2>
@@ -123,6 +131,7 @@
     <td>
       <div class="app-title">{{highlight .Title $.Query}}</div>
       <div class="app-desc">{{highlight .Description $.Query}}</div>
+      {{if .FederationURL}}<div class="app-federation">Federation: <a href="{{.FederationURL}}" target="_blank" rel="noopener">{{.FederationURL}}</a></div>{{end}}
     </td>
     <td>
       {{if or .Categories .Tags}}
@@ -163,6 +172,7 @@
     <td>
       <div class="app-title">{{highlight .Title $.Query}}</div>
       <div class="app-desc">{{highlight .Description $.Query}}</div>
+      {{if .FederationURL}}<div class="app-federation">Federation: <a href="{{.FederationURL}}" target="_blank" rel="noopener">{{.FederationURL}}</a></div>{{end}}
     </td>
     <td>{{if .Categories}}<div class="tag-list">{{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}</div>{{else}}-{{end}}</td>
     <td>{{if .Tags}}<div class="tag-list">{{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}</div>{{else}}-{{end}}</td>

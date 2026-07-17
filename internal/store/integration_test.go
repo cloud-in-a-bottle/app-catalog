@@ -129,6 +129,75 @@ func TestListCatalogAppsOrderedByScore(t *testing.T) {
 	}
 }
 
+// TestFederationURLFilter verifies that federation_url round-trips through the
+// store, that AppListFilter.FederationURL matches exactly, and that the
+// generic query LIKE search also matches federation_url.
+func TestFederationURLFilter(t *testing.T) {
+	dir := t.TempDir()
+	store, err := Open(filepath.Join(dir, "catalog.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	if err := store.Init(ctx); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	if err := store.CreateSource(ctx, Source{
+		ID:      "s",
+		Name:    "S",
+		URL:     "https://example.invalid/s.json",
+		Enabled: true,
+	}); err != nil {
+		t.Fatalf("create source: %v", err)
+	}
+
+	const chatSpec = "https://spec.example/chat/v1"
+	apps := []CatalogApp{
+		{SourceID: "s", AppID: "chat", Title: "Chat", RepoURL: "https://example.invalid/chat", FederationURL: chatSpec},
+		{SourceID: "s", AppID: "mail", Title: "Mail", RepoURL: "https://example.invalid/mail", FederationURL: "https://spec.example/mail/v1"},
+		{SourceID: "s", AppID: "plain", Title: "Plain", RepoURL: "https://example.invalid/plain"},
+	}
+	if err := store.ReplaceCatalogAppsForSource(ctx, "s", apps); err != nil {
+		t.Fatalf("replace apps: %v", err)
+	}
+
+	got, err := store.GetCatalogApp(ctx, "s", "chat")
+	if err != nil {
+		t.Fatalf("get app: %v", err)
+	}
+	if got.FederationURL != chatSpec {
+		t.Errorf("round-trip: got %q, want %q", got.FederationURL, chatSpec)
+	}
+
+	filtered, err := store.ListCatalogApps(ctx, AppListFilter{FederationURL: chatSpec})
+	if err != nil {
+		t.Fatalf("list filtered: %v", err)
+	}
+	if len(filtered) != 1 || filtered[0].AppID != "chat" {
+		t.Errorf("federation filter: got %d apps, want exactly [chat]", len(filtered))
+	}
+
+	// Exact match only: a prefix of the spec URL must not match.
+	none, err := store.ListCatalogApps(ctx, AppListFilter{FederationURL: "https://spec.example/chat"})
+	if err != nil {
+		t.Fatalf("list prefix: %v", err)
+	}
+	if len(none) != 0 {
+		t.Errorf("prefix should not match: got %d apps, want 0", len(none))
+	}
+
+	// Generic q LIKE search matches federation_url too.
+	byQuery, err := store.ListCatalogApps(ctx, AppListFilter{Query: "spec.example/chat"})
+	if err != nil {
+		t.Fatalf("list by query: %v", err)
+	}
+	if len(byQuery) != 1 || byQuery[0].AppID != "chat" {
+		t.Errorf("query search on federation_url: got %d apps, want exactly [chat]", len(byQuery))
+	}
+}
+
 // TestIntegrationMigrationIdempotent checks that re-running Init
 // against an already-migrated database is a no-op rather than
 // erroring on the duplicate column ALTERs.

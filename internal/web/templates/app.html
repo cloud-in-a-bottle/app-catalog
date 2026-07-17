@@ -26,6 +26,7 @@
     <tr><th>Categories</th><td>{{if .App.Categories}}{{join .App.Categories ", "}}{{else}}-{{end}}</td></tr>
     <tr><th>Website</th><td>{{if .App.WebsiteURL}}<a href="{{.App.WebsiteURL}}" target="_blank" rel="noopener">{{.App.WebsiteURL}}</a>{{else}}-{{end}}</td></tr>
     <tr><th>Docs</th><td>{{if .App.DocsURL}}<a href="{{.App.DocsURL}}" target="_blank" rel="noopener">{{.App.DocsURL}}</a>{{else}}-{{end}}</td></tr>
+    {{if .App.FederationURL}}<tr><th>Federation</th><td style="word-break: break-word;"><a href="{{.App.FederationURL}}" target="_blank" rel="noopener">{{.App.FederationURL}}</a></td></tr>{{end}}
   </table>
 
   <h2 style="margin-top: 2em;">Install</h2>
