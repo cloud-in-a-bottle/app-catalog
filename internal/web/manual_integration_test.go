@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -87,6 +88,12 @@ func appWith(name, title string, tags, cats []string) string {
 func appWithDesc(name, title, desc string) string {
 	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s","description":%q}`,
 		name, title, name, desc)
+}
+
+// appWithFederation builds a feed entry with a federation_url field.
+func appWithFederation(name, title, federationURL string) string {
+	return fmt.Sprintf(`{"name":%q,"title":%q,"repo_url":"https://github.com/x/%s","federation_url":%q}`,
+		name, title, name, federationURL)
 }
 
 func TestManualIntegration(t *testing.T) {
@@ -392,6 +399,58 @@ func TestManualIntegration(t *testing.T) {
 			}
 			if strings.Contains(page, "AppFromB") {
 				t.Error("source filter should hide srcB app")
+			}
+		}},
+
+		// --- Federation filter ---
+		{"federation_url filter returns only matching apps with indicator", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWithFederation("chat", "ChatApp", "https://spec.example/chat/v1"),
+				appWithFederation("mail", "MailApp", "https://spec.example/mail/v1"),
+				app("plain", "PlainApp"),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?federation_url="+url.QueryEscape("https://spec.example/chat/v1"))
+			if !strings.Contains(page, "ChatApp") {
+				t.Error("matching federation app missing from results")
+			}
+			if strings.Contains(page, "MailApp") || strings.Contains(page, "PlainApp") {
+				t.Error("non-matching apps should be excluded from federation filter results")
+			}
+			if !strings.Contains(page, "Filtering by federation protocol") {
+				t.Error("active federation filter indicator missing")
+			}
+		}},
+
+		{"main search matches federation url", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			body := feed(strings.Join([]string{
+				appWithFederation("chat", "ChatApp", "https://spec.example/chat/v1"),
+				app("plain", "PlainApp"),
+			}, ","))
+			fs := feedServer(t, body)
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/?q="+url.QueryEscape("spec.example/chat"))
+			if !strings.Contains(page, "ChatApp") {
+				t.Error("q search should match on federation_url")
+			}
+			if strings.Contains(page, "PlainApp") {
+				t.Error("app without matching federation_url should not appear")
+			}
+		}},
+
+		{"detail page links federation url", func(t *testing.T) {
+			srv, svc, st := newTestServer(t)
+			fs := feedServer(t, feed(appWithFederation("chat", "ChatApp", "https://spec.example/chat/v1")))
+			defer fs.Close()
+			addAndSync(t, svc, st, "official", "Off", fs.URL+"/catalog.json")
+			_, page := get(t, srv, "/apps/official/chat")
+			if !strings.Contains(page, `<a href="https://spec.example/chat/v1"`) {
+				t.Error("detail page should linkify the federation url")
 			}
 		}},
 

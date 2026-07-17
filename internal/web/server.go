@@ -60,6 +60,7 @@ type indexPageData struct {
 	TagExpr         string
 	CategoryFilter  string
 	CategoryExpr    string
+	FederationURL   string
 	Advanced        bool
 	TagView         bool // simple single-tag filter with no other filters active
 	Sources         []store.Source
@@ -203,6 +204,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	tagExpr := strings.TrimSpace(r.URL.Query().Get("tag_expr"))
 	categoryFilter := strings.TrimSpace(r.URL.Query().Get("category"))
 	categoryExpr := strings.TrimSpace(r.URL.Query().Get("category_expr"))
+	federationURL := strings.TrimSpace(r.URL.Query().Get("federation_url"))
 	advanced := r.URL.Query().Has("advanced")
 
 	// "all" / "custom" are UI sentinels; the store receives an empty string.
@@ -218,21 +220,23 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Show apps when: a category is chosen (category view), the advanced form
-	// was submitted, or a query is entered on the main landing page.
+	// was submitted, a query is entered on the main landing page, or a
+	// federation filter is active (linked from a zone's /federation/connect).
 	formSubmitted := r.URL.Query().Has("filter")
 	mainSearch := !advanced && categoryFilter == "" && query != ""
-	showApps := (!advanced && categoryFilter != "") || (advanced && formSubmitted) || mainSearch
+	showApps := (!advanced && categoryFilter != "") || (advanced && formSubmitted) || mainSearch || federationURL != ""
 
 	var apps []store.CatalogApp
 	if showApps {
 		var err error
 		apps, err = s.store.ListCatalogApps(ctx, store.AppListFilter{
-			Query:        query,
-			SearchAll:    mainSearch,
-			SourceID:     sourceFilter,
-			TagExpr:      tagExpr,
-			Category:     storeCategory,
-			CategoryExpr: appliedCategoryExpr,
+			Query:         query,
+			SearchAll:     mainSearch,
+			SourceID:      sourceFilter,
+			TagExpr:       tagExpr,
+			Category:      storeCategory,
+			CategoryExpr:  appliedCategoryExpr,
+			FederationURL: federationURL,
 		})
 		if err != nil {
 			s.renderError(w, http.StatusInternalServerError, "failed to query catalog apps", err)
@@ -259,6 +263,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		TagExpr:         tagExpr,
 		CategoryFilter:  categoryFilter,
 		CategoryExpr:    categoryExpr,
+		FederationURL:   federationURL,
 		Advanced:        advanced,
 		Sources:         sources,
 		AllCategories:   allCategories,

@@ -43,7 +43,8 @@ type CatalogApp struct {
 	Categories               []string
 	WebsiteURL               string
 	DocsURL                  string
-	OpenhostIntegrationScore int // 1-5 when supplied, 0 means unrated
+	FederationURL            string // federation protocol spec the app implements, "" if none
+	OpenhostIntegrationScore int    // 1-5 when supplied, 0 means unrated
 	UpdatedAt                string
 }
 
@@ -67,13 +68,14 @@ type Publish struct {
 }
 
 type AppListFilter struct {
-	Query        string
-	SearchAll    bool // when true, Query also matches tags and categories
-	SourceID     string
-	Tag          string
-	TagExpr      string // logic expression e.g. "rss && privacy"; overrides Tag when set
-	Category     string
-	CategoryExpr string // logic expression e.g. "ai || privacy"; overrides Category when set
+	Query         string
+	SearchAll     bool // when true, Query also matches tags and categories
+	SourceID      string
+	Tag           string
+	TagExpr       string // logic expression e.g. "rss && privacy"; overrides Tag when set
+	Category      string
+	CategoryExpr  string // logic expression e.g. "ai || privacy"; overrides Category when set
+	FederationURL string // exact match on federation_url when set
 }
 
 func Open(path string) (*Store, error) {
@@ -145,6 +147,7 @@ func (s *Store) Init(ctx context.Context) error {
 			categories_json TEXT NOT NULL DEFAULT '[]',
 			website_url TEXT NOT NULL DEFAULT '',
 			docs_url TEXT NOT NULL DEFAULT '',
+			federation_url TEXT NOT NULL DEFAULT '',
 			updated_at TEXT NOT NULL,
 			PRIMARY KEY (source_id, app_id),
 			FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
@@ -179,18 +182,19 @@ func (s *Store) Init(ctx context.Context) error {
 		}
 	}
 
-	// Schema evolution for the integration rating feature.
+	// Schema evolution for databases created by prior versions.
 	// Both statement sets are idempotent: ADD COLUMN raises "duplicate
 	// column name" when the column exists, DROP COLUMN raises "no such
 	// column" when it does not. We swallow each expected-noop error.
 
 	addColumns := []string{
 		`ALTER TABLE catalog_apps ADD COLUMN openhost_integration_score INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE catalog_apps ADD COLUMN federation_url TEXT NOT NULL DEFAULT ''`,
 	}
 	for _, stmt := range addColumns {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
 			if !strings.Contains(err.Error(), "duplicate column name") {
-				return fmt.Errorf("add integration score column: %w", err)
+				return fmt.Errorf("add column: %w", err)
 			}
 		}
 	}
@@ -315,9 +319,9 @@ func (s *Store) ReplaceCatalogAppsForSource(ctx context.Context, sourceID string
 
 	insertStmt := `INSERT INTO catalog_apps
 	(source_id, app_id, title, description, repo_url, repo_ref, icon_url,
-	 tags_json, categories_json, website_url, docs_url,
+	 tags_json, categories_json, website_url, docs_url, federation_url,
 	 openhost_integration_score, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	now := nowString()
 	for _, app := range apps {
@@ -344,6 +348,7 @@ func (s *Store) ReplaceCatalogAppsForSource(ctx context.Context, sourceID string
 			string(categoriesJSON),
 			app.WebsiteURL,
 			app.DocsURL,
+			app.FederationURL,
 			app.OpenhostIntegrationScore,
 			now,
 		); err != nil {
@@ -407,6 +412,7 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 		ca.categories_json,
 		ca.website_url,
 		ca.docs_url,
+		ca.federation_url,
 		ca.openhost_integration_score,
 		ca.updated_at
 	FROM catalog_apps ca
@@ -419,6 +425,10 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 		query += ` AND ca.source_id = ?`
 		args = append(args, filter.SourceID)
 	}
+	if filter.FederationURL != "" {
+		query += ` AND ca.federation_url = ?`
+		args = append(args, filter.FederationURL)
+	}
 	if filter.Query != "" {
 		like := "%" + strings.ToLower(filter.Query) + "%"
 		if filter.SearchAll {
@@ -426,17 +436,19 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 				lower(ca.app_id) LIKE ? OR
 				lower(ca.title) LIKE ? OR
 				lower(ca.description) LIKE ? OR
+				lower(ca.federation_url) LIKE ? OR
 				LOWER(ca.tags_json) LIKE ? OR
 				LOWER(ca.categories_json) LIKE ?
 			)`
-			args = append(args, like, like, like, like, like)
+			args = append(args, like, like, like, like, like, like)
 		} else {
 			query += ` AND (
 				lower(ca.app_id) LIKE ? OR
 				lower(ca.title) LIKE ? OR
-				lower(ca.description) LIKE ?
+				lower(ca.description) LIKE ? OR
+				lower(ca.federation_url) LIKE ?
 			)`
-			args = append(args, like, like, like)
+			args = append(args, like, like, like, like)
 		}
 	}
 	if filter.CategoryExpr != "" {
@@ -487,6 +499,7 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 			&categoriesJSON,
 			&app.WebsiteURL,
 			&app.DocsURL,
+			&app.FederationURL,
 			&app.OpenhostIntegrationScore,
 			&app.UpdatedAt,
 		); err != nil {
@@ -544,6 +557,7 @@ func (s *Store) GetCatalogApp(ctx context.Context, sourceID, appID string) (Cata
 			ca.categories_json,
 			ca.website_url,
 			ca.docs_url,
+			ca.federation_url,
 			ca.openhost_integration_score,
 			ca.updated_at
 		 FROM catalog_apps ca
@@ -568,6 +582,7 @@ func (s *Store) GetCatalogApp(ctx context.Context, sourceID, appID string) (Cata
 		&categoriesJSON,
 		&app.WebsiteURL,
 		&app.DocsURL,
+		&app.FederationURL,
 		&app.OpenhostIntegrationScore,
 		&app.UpdatedAt,
 	); err != nil {

@@ -42,6 +42,7 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
       "categories": ["search"],
       "website_url": "https://docs.searxng.org",
       "docs_url": "https://github.com/imbue-openhost/openhost-searxng#readme",
+      "federation_url": "",
       "openhost_integration_score": 5
     }
   ]
@@ -51,6 +52,8 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
 Required fields: `name`, `title`, `repo_url`. All others may be omitted.
 
 `name` must be lowercase alphanumeric with optional interior hyphens (matches OpenHost's app name format). It is the catalog's identifier for the app, the default name when deploying, and must be unique within a source.
+
+`federation_url` is the URL of the federation protocol spec the app implements (from the app manifest's `federation_url`), or omitted/empty when the app does not federate. It must be an absolute http(s) URL. Catalog pages accept a `?federation_url=<spec>` query parameter that filters the listing to apps implementing exactly that spec — this is what a zone's `/federation/connect` page links to when the user has no installed app for an invite's protocol.
 
 ## Integration score
 

@@ -57,6 +57,7 @@ type sourceFeedApp struct {
 	Categories               []string `json:"categories"`
 	WebsiteURL               string   `json:"website_url"`
 	DocsURL                  string   `json:"docs_url"`
+	FederationURL            string   `json:"federation_url"`
 	OpenhostIntegrationScore int      `json:"openhost_integration_score"`
 }
 
@@ -194,6 +195,7 @@ func normalizeFeedApp(sourceID string, in sourceFeedApp) (store.CatalogApp, bool
 		Categories:               filterAllowedCategories(compactList(in.Categories)),
 		WebsiteURL:               safeFeedURL(in.WebsiteURL),
 		DocsURL:                  safeFeedURL(in.DocsURL),
+		FederationURL:            safeFeedURL(in.FederationURL),
 		OpenhostIntegrationScore: score,
 	}
 
