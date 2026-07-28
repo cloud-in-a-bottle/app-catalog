@@ -10,6 +10,7 @@
     <a href="{{withBase .BasePath "/"}}"{{if not .Advanced}} class="nav-active"{{end}}>Catalog</a>
     <a href="{{withBase .BasePath "/sources"}}">Sources</a>
     <a href="{{withBase .BasePath "/?advanced"}}"{{if .Advanced}} class="nav-active"{{end}}>Advanced Search</a>
+    <a href="{{withBase .BasePath "/submit"}}">List your app</a>
     <span class="spacer"></span>
     <a href="{{.RouterBaseURL}}" class="nav-dashboard">&larr; Back to Openhost Dashboard</a>
   </nav>

@@ -1,0 +1,28 @@
+name: Feed validation parity
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Ensures the catalog's app-name regex and category set stay in sync with the
+# openhost-apps generate.py that produces the feed. A drift would let a
+# submission pass the catalog form but fail openhost-apps CI (or vice versa).
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out catalog
+        uses: actions/checkout@v4
+      - name: Check out openhost-apps
+        uses: actions/checkout@v4
+        with:
+          repository: imbue-openhost/openhost-apps
+          path: openhost-apps
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check validation parity
+        env:
+          OPENHOST_APPS_GENERATE_PY: ${{ github.workspace }}/openhost-apps/generate.py
+        run: go test ./internal/catalog/ -run TestFeedValidationParity -v

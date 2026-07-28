@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/imbue-openhost/openhost-catalog/internal/store"
@@ -62,6 +63,33 @@ type sourceFeedApp struct {
 
 func NewService(st *store.Store, client *http.Client) *Service {
 	return &Service{store: st, httpClient: client}
+}
+
+// ValidAppID reports whether id matches the catalog app-name format:
+// lowercase alphanumeric with optional interior hyphens.
+func ValidAppID(id string) bool {
+	return validIDPattern.MatchString(strings.TrimSpace(id))
+}
+
+// SafeURL returns raw if it is an absolute http/https URL, else "".
+func SafeURL(raw string) string {
+	return safeFeedURL(raw)
+}
+
+// IsAllowedCategory reports whether c is one of the canonical categories.
+func IsAllowedCategory(c string) bool {
+	_, ok := AllowedCategories[c]
+	return ok
+}
+
+// SortedCategories returns the canonical categories in alphabetical order.
+func SortedCategories() []string {
+	out := make([]string, 0, len(AllowedCategories))
+	for c := range AllowedCategories {
+		out = append(out, c)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (s *Service) SyncSource(ctx context.Context, sourceID string) error {
