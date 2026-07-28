@@ -39,7 +39,7 @@ func TestFeedValidationParity(t *testing.T) {
 }
 
 func pyNamePattern(t *testing.T, text string) string {
-	m := regexp.MustCompile(`_NAME_PATTERN\s*=\s*re\.compile\(r"([^"]+)"\)`).FindStringSubmatch(text)
+	m := regexp.MustCompile(`_NAME_PATTERN\s*=\s*re\.compile\(\s*r["']([^"']+)["']`).FindStringSubmatch(text)
 	if m == nil {
 		t.Fatal("could not find _NAME_PATTERN in generate.py")
 	}

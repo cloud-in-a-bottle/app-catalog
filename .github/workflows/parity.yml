@@ -3,7 +3,7 @@ name: Feed validation parity
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master, main]
 
 # Ensures the catalog's app-name regex and category set stay in sync with the
 # openhost-apps generate.py that produces the feed. A drift would let a
