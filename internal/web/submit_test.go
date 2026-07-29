@@ -90,23 +90,24 @@ func TestBuildListingEntryValidation(t *testing.T) {
 
 func TestParseGitHubRepo(t *testing.T) {
 	tests := []struct {
-		raw         string
-		owner, repo string
-		ok          bool
+		raw              string
+		owner, repo, ref string
+		ok               bool
 	}{
-		{"https://github.com/you/my-app", "you", "my-app", true},
-		{"https://www.github.com/you/my-app.git", "you", "my-app", true},
-		{"https://github.com/you/my-app/tree/main", "you", "my-app", true},
-		{"https://gitlab.com/you/my-app", "", "", false},
-		{"ftp://github.com/you/my-app", "", "", false},
-		{"https://github.com/you", "", "", false},
-		{"not a url", "", "", false},
+		{"https://github.com/you/my-app", "you", "my-app", "", true},
+		{"https://www.github.com/you/my-app.git", "you", "my-app", "", true},
+		{"https://github.com/you/my-app/tree/main", "you", "my-app", "main", true},
+		{"https://github.com/you/my-app/tree/feature", "you", "my-app", "feature", true},
+		{"https://gitlab.com/you/my-app", "", "", "", false},
+		{"ftp://github.com/you/my-app", "", "", "", false},
+		{"https://github.com/you", "", "", "", false},
+		{"not a url", "", "", "", false},
 	}
 	for _, tc := range tests {
-		owner, repo, ok := parseGitHubRepo(tc.raw)
-		if ok != tc.ok || owner != tc.owner || repo != tc.repo {
-			t.Errorf("parseGitHubRepo(%q) = (%q, %q, %v), want (%q, %q, %v)",
-				tc.raw, owner, repo, ok, tc.owner, tc.repo, tc.ok)
+		owner, repo, ref, ok := parseGitHubRepo(tc.raw)
+		if ok != tc.ok || owner != tc.owner || repo != tc.repo || ref != tc.ref {
+			t.Errorf("parseGitHubRepo(%q) = (%q, %q, %q, %v), want (%q, %q, %q, %v)",
+				tc.raw, owner, repo, ref, ok, tc.owner, tc.repo, tc.ref, tc.ok)
 		}
 	}
 }

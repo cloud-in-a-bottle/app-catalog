@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -134,7 +135,7 @@ func buildListingEntry(form submitForm) (listingEntry, []string) {
 	case repoURL == "":
 		errs = append(errs, "Repository URL is required.")
 	default:
-		if _, _, ok := parseGitHubRepo(repoURL); !ok {
+		if _, _, _, ok := parseGitHubRepo(repoURL); !ok {
 			errs = append(errs, "Repository URL must be a GitHub repo (https://github.com/owner/repo).")
 		}
 	}
@@ -267,7 +268,11 @@ func tomlString(s string) string {
 		case '\t':
 			b.WriteString(`\t`)
 		default:
-			b.WriteRune(r)
+			if r < 0x20 || r == 0x7f {
+				fmt.Fprintf(&b, `\u%04X`, r)
+			} else {
+				b.WriteRune(r)
+			}
 		}
 	}
 	b.WriteByte('"')
@@ -287,52 +292,68 @@ func buildForkURL(repoURL string) string {
 	return strings.TrimRight(repoURL, "/") + "/fork"
 }
 
-// parseGitHubRepo extracts the owner and repo from an http(s) github.com URL.
-func parseGitHubRepo(raw string) (owner, repo string, ok bool) {
+// parseGitHubRepo extracts the owner, repo, and any /tree|/blob ref from an
+// http(s) github.com URL. ref is "" when the URL carries no branch.
+func parseGitHubRepo(raw string) (owner, repo, ref string, ok bool) {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-		return "", "", false
+		return "", "", "", false
 	}
 	if u.Host != "github.com" && u.Host != "www.github.com" {
-		return "", "", false
+		return "", "", "", false
 	}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", false
+		return "", "", "", false
 	}
-	return parts[0], strings.TrimSuffix(parts[1], ".git"), true
+	if len(parts) >= 4 && (parts[2] == "tree" || parts[2] == "blob") {
+		ref = parts[3]
+	}
+	return parts[0], strings.TrimSuffix(parts[1], ".git"), ref, true
 }
 
 // checkRepo verifies, without auth, that the GitHub repo is public and has an
 // openhost.toml at its root. Returns a user-facing message on failure, or "".
 func (s *Server) checkRepo(ctx context.Context, repoURL, repoRef string) string {
-	owner, repo, ok := parseGitHubRepo(repoURL)
+	owner, repo, urlRef, ok := parseGitHubRepo(repoURL)
 	if !ok {
 		return ""
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.RequestTimeout)
 	defer cancel()
 
-	switch s.headStatus(ctx, repoURL) {
-	case http.StatusOK:
-	case http.StatusNotFound:
+	if exists, notFound := classifyHead(s.headStatus(ctx, "https://github.com/"+owner+"/"+repo)); notFound {
 		return "GitHub repository not found. Check the URL and make sure the repo is public."
-	default:
+	} else if !exists {
 		return "Could not reach GitHub to verify the repository. Try again."
 	}
 
 	ref := repoRef
 	if ref == "" {
+		ref = urlRef
+	}
+	if ref == "" {
 		ref = "HEAD"
 	}
 	manifestURL := "https://raw.githubusercontent.com/" + owner + "/" + repo + "/" + ref + "/openhost.toml"
-	switch s.headStatus(ctx, manifestURL) {
-	case http.StatusOK:
-		return ""
-	case http.StatusNotFound:
+	if exists, notFound := classifyHead(s.headStatus(ctx, manifestURL)); notFound {
 		return "No openhost.toml found at the repository root."
-	default:
+	} else if !exists {
 		return "Could not reach GitHub to verify openhost.toml. Try again."
+	}
+	return ""
+}
+
+// classifyHead maps a HEAD status to existence: a 2xx or redirect means the
+// resource exists, 404 means it does not, anything else is unreachable.
+func classifyHead(status int) (exists, notFound bool) {
+	switch {
+	case status >= 200 && status < 400:
+		return true, false
+	case status == http.StatusNotFound:
+		return false, true
+	default:
+		return false, false
 	}
 }
 
