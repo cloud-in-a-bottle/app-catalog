@@ -62,13 +62,13 @@
       <input type="url" name="docs_url" value="{{.Form.DocsURL}}"></label>
     <label>Tags <span class="submit-hint">— optional; comma-separated</span><br>
       <input type="text" name="tags" value="{{.Form.Tags}}" placeholder="rss, privacy, news"></label>
-    <label>Categories <span class="submit-hint">— optional</span>
+    <div class="cat-field">Categories <span class="submit-hint">— optional</span>
       <div class="cat-checkboxes">
         {{range .AllCategories}}
         <label><input type="checkbox" name="categories" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
         {{end}}
       </div>
-    </label>
+    </div>
     <p class="submit-hint" style="margin-top:0;">The OpenHost integration score is assigned by maintainers during review.</p>
     <button type="submit" class="btn btn-primary">Generate catalog entry</button>
   </form>

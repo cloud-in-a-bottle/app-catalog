@@ -129,7 +129,7 @@ mark { background: #fef08a; color: inherit; padding: 0 0.1em; border-radius: 2px
 /* List your app ----------------------------------------------------------- */
 
 .submit-form { max-width: 640px; }
-.submit-form label { display: block; margin-bottom: 0.9em; font-weight: 600; }
+.submit-form label, .submit-form .cat-field { display: block; margin-bottom: 0.9em; font-weight: 600; }
 .submit-form input, .submit-form textarea { margin-top: 0.25em; font-weight: normal; }
 .submit-form textarea { width: 100%; box-sizing: border-box; padding: 0.4em; font: inherit; }
 .submit-hint { font-weight: normal; color: #888; font-size: 0.85em; }
