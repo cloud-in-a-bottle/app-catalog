@@ -62,7 +62,7 @@ func TestBuildListingEntryValidation(t *testing.T) {
 		{"bad name", submitForm{Name: "My_App", Title: "t", Description: "d", RepoURL: "https://github.com/you/x"}, "lowercase alphanumeric"},
 		{"missing title", submitForm{Name: "x", Description: "d", RepoURL: "https://github.com/you/x"}, "Title is required"},
 		{"missing repo", submitForm{Name: "x", Title: "t", Description: "d"}, "Repository URL is required"},
-		{"bad repo scheme", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "ftp://h/x"}, "absolute http(s) URL"},
+		{"bad repo scheme", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "ftp://github.com/you/x"}, "GitHub repo"},
 		{"non-github repo", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://gitlab.com/you/x"}, "GitHub repo"},
 		{"github no repo path", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you"}, "GitHub repo"},
 		{"bad category", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you/x", Categories: []string{"bogus"}}, "Unknown categories"},
@@ -98,6 +98,7 @@ func TestParseGitHubRepo(t *testing.T) {
 		{"https://www.github.com/you/my-app.git", "you", "my-app", true},
 		{"https://github.com/you/my-app/tree/main", "you", "my-app", true},
 		{"https://gitlab.com/you/my-app", "", "", false},
+		{"ftp://github.com/you/my-app", "", "", false},
 		{"https://github.com/you", "", "", false},
 		{"not a url", "", "", false},
 	}

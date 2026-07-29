@@ -75,7 +75,7 @@ func (s *Server) handleSubmitCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if msg := s.checkRepoPublic(r.Context(), form.RepoURL); msg != "" {
+	if msg := s.checkRepo(r.Context(), form.RepoURL, form.RepoRef); msg != "" {
 		s.renderSubmit(w, r, http.StatusBadRequest, form, []string{msg}, submitResult{})
 		return
 	}
@@ -133,8 +133,6 @@ func buildListingEntry(form submitForm) (listingEntry, []string) {
 	switch {
 	case repoURL == "":
 		errs = append(errs, "Repository URL is required.")
-	case catalog.SafeURL(repoURL) == "":
-		errs = append(errs, "Repository URL must be an absolute http(s) URL.")
 	default:
 		if _, _, ok := parseGitHubRepo(repoURL); !ok {
 			errs = append(errs, "Repository URL must be a GitHub repo (https://github.com/owner/repo).")
@@ -289,10 +287,13 @@ func buildForkURL(repoURL string) string {
 	return strings.TrimRight(repoURL, "/") + "/fork"
 }
 
-// parseGitHubRepo extracts the owner and repo from a github.com repo URL.
+// parseGitHubRepo extracts the owner and repo from an http(s) github.com URL.
 func parseGitHubRepo(raw string) (owner, repo string, ok bool) {
 	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || (u.Host != "github.com" && u.Host != "www.github.com") {
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return "", "", false
+	}
+	if u.Host != "github.com" && u.Host != "www.github.com" {
 		return "", "", false
 	}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
@@ -302,31 +303,51 @@ func parseGitHubRepo(raw string) (owner, repo string, ok bool) {
 	return parts[0], strings.TrimSuffix(parts[1], ".git"), true
 }
 
-// checkRepoPublic verifies the GitHub repo exists and is reachable without
-// auth. Returns a user-facing message on failure, or "" when public.
-func (s *Server) checkRepoPublic(ctx context.Context, repoURL string) string {
-	if _, _, ok := parseGitHubRepo(repoURL); !ok {
+// checkRepo verifies, without auth, that the GitHub repo is public and has an
+// openhost.toml at its root. Returns a user-facing message on failure, or "".
+func (s *Server) checkRepo(ctx context.Context, repoURL, repoRef string) string {
+	owner, repo, ok := parseGitHubRepo(repoURL)
+	if !ok {
 		return ""
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.RequestTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, repoURL, nil)
-	if err != nil {
-		return ""
-	}
-	resp, err := s.http.Do(req)
-	if err != nil {
-		return "Could not reach GitHub to verify the repository. Try again."
-	}
-	defer resp.Body.Close()
-	switch resp.StatusCode {
+
+	switch s.headStatus(ctx, repoURL) {
 	case http.StatusOK:
-		return ""
 	case http.StatusNotFound:
 		return "GitHub repository not found. Check the URL and make sure the repo is public."
 	default:
-		return "Could not verify the repository on GitHub. Try again."
+		return "Could not reach GitHub to verify the repository. Try again."
 	}
+
+	ref := repoRef
+	if ref == "" {
+		ref = "HEAD"
+	}
+	manifestURL := "https://raw.githubusercontent.com/" + owner + "/" + repo + "/" + ref + "/openhost.toml"
+	switch s.headStatus(ctx, manifestURL) {
+	case http.StatusOK:
+		return ""
+	case http.StatusNotFound:
+		return "No openhost.toml found at the repository root."
+	default:
+		return "Could not reach GitHub to verify openhost.toml. Try again."
+	}
+}
+
+// headStatus issues a HEAD request and returns the status code, or 0 on error.
+func (s *Server) headStatus(ctx context.Context, rawURL string) int {
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, rawURL, nil)
+	if err != nil {
+		return 0
+	}
+	resp, err := s.http.Do(req)
+	if err != nil {
+		return 0
+	}
+	resp.Body.Close()
+	return resp.StatusCode
 }
 
 func repoLabel(repoURL string) string {
