@@ -18,7 +18,7 @@
   <h2>List your app</h2>
   <p style="color:#666;">Add your app to the catalog by opening a pull request against
     <a href="{{.RepoURL}}" target="_blank" rel="noopener"><code>{{.RepoLabel}}</code></a>.
-    Fill in the details and we'll pre-fill the pull request for you — no git, clone, or fork setup required.
+    Fill in the details below to generate your catalog entry, then follow the steps to add it and open a pull request.
     A maintainer reviews every submission before it appears in the catalog.</p>
 
   {{if .Errors}}
@@ -28,21 +28,19 @@
   </div>
   {{end}}
 
-  {{if .ListingURL}}
+  {{if .TOMLPreview}}
   <div class="result-panel">
-    <p><strong>Ready.</strong> Review the generated entry below, then open the pull request. GitHub forks
-      the repo to your account, adds this file on a new branch, and starts the PR.</p>
-    <p><a class="btn btn-primary" href="{{.ListingURL}}" target="_blank" rel="noopener">Open pre-filled pull request on GitHub &rarr;</a></p>
-    <p class="submit-hint">Creates <code>apps/{{.Form.Name}}/app.toml</code>.</p>
-    <pre class="toml-preview">{{.TOMLPreview}}</pre>
-  </div>
-  {{else if .TooLong}}
-  <div class="result-panel">
-    <p><strong>This entry is too long to pre-fill automatically</strong> — the pre-filled link would exceed
-      the ~8&nbsp;KB URL limit. Create the file manually instead:</p>
-    <p><a class="btn btn-primary" href="{{.ManualURL}}" target="_blank" rel="noopener">Create <code>apps/{{.Form.Name}}/app.toml</code> on GitHub &rarr;</a></p>
-    <p class="submit-hint">Opens the new-file editor with the path filled in. Copy the entry below into it, then commit to start the pull request.</p>
-    <pre class="toml-preview">{{.TOMLPreview}}</pre>
+    <p><strong>Your catalog entry is ready.</strong> Copy it, then add it to the feed repo:</p>
+    <div class="toml-block">
+      <button type="button" class="btn copy-btn" data-copy="toml-entry">Copy</button>
+      <pre class="toml-preview" id="toml-entry">{{.TOMLPreview}}</pre>
+    </div>
+    <ol class="submit-steps">
+      <li><a class="btn btn-primary" href="{{.ForkURL}}" target="_blank" rel="noopener">Fork <code>{{.RepoLabel}}</code> on GitHub &rarr;</a></li>
+      <li>In your fork, create a new file at <code>{{.FilePath}}</code> and paste the entry above into it.</li>
+      <li>Commit to a new branch and open a pull request back to <code>{{.RepoLabel}}</code>.</li>
+    </ol>
+    <p class="submit-hint">On open, CI runs the feed's <code>generate.py</code> to validate your entry. A maintainer reviews it before it appears in the catalog.</p>
   </div>
   {{end}}
 
@@ -73,7 +71,21 @@
       </div>
     </label>
     <p class="submit-hint" style="margin-top:0;">The OpenHost integration score is assigned by maintainers during review.</p>
-    <button type="submit" class="btn btn-primary">Generate pull request</button>
+    <button type="submit" class="btn btn-primary">Generate catalog entry</button>
   </form>
+
+  <script>
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".copy-btn");
+      if (!btn) return;
+      var el = document.getElementById(btn.dataset.copy);
+      if (!el || !navigator.clipboard) return;
+      navigator.clipboard.writeText(el.textContent).then(function () {
+        var prev = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = prev; }, 1500);
+      });
+    });
+  </script>
 </body>
 </html>

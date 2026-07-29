@@ -8,11 +8,6 @@ import (
 	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
 )
 
-// maxListingURLLen bounds the pre-filled PR URL. The whole URL travels in an
-// HTTP request line that servers (nginx, Apache) cap around 8 KB by default,
-// and GitHub is no exception. Beyond this we fall back to the manual method.
-const maxListingURLLen = 8000
-
 type submitForm struct {
 	Name        string
 	Title       string
@@ -37,20 +32,17 @@ type submitPageData struct {
 	RouterBaseURL string
 	RepoURL       string
 	RepoLabel     string
+	ForkURL       string
 	Form          submitForm
 	Errors        []string
-	ListingURL    string
-	ManualURL     string
-	TooLong       bool
+	FilePath      string
 	TOMLPreview   string
 	AllCategories []submitCategory
 }
 
 type submitResult struct {
-	ListingURL  string
-	ManualURL   string
+	FilePath    string
 	TOMLPreview string
-	TooLong     bool
 }
 
 func (s *Server) handleSubmitPage(w http.ResponseWriter, r *http.Request) {
@@ -82,13 +74,9 @@ func (s *Server) handleSubmitCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := submitResult{TOMLPreview: entry.toml}
-	listingURL := buildListingURL(s.cfg.SubmitRepoURL, s.cfg.SubmitBranch, entry.name, entry.toml)
-	if len(listingURL) > maxListingURLLen {
-		res.TooLong = true
-		res.ManualURL = buildFilePathURL(s.cfg.SubmitRepoURL, s.cfg.SubmitBranch, entry.name)
-	} else {
-		res.ListingURL = listingURL
+	res := submitResult{
+		FilePath:    "apps/" + entry.name + "/app.toml",
+		TOMLPreview: entry.toml,
 	}
 	s.renderSubmit(w, r, http.StatusOK, form, nil, res)
 }
@@ -99,11 +87,10 @@ func (s *Server) renderSubmit(w http.ResponseWriter, r *http.Request, status int
 		RouterBaseURL: s.routerBaseURL(r),
 		RepoURL:       s.cfg.SubmitRepoURL,
 		RepoLabel:     repoLabel(s.cfg.SubmitRepoURL),
+		ForkURL:       buildForkURL(s.cfg.SubmitRepoURL),
 		Form:          form,
 		Errors:        errs,
-		ListingURL:    res.ListingURL,
-		ManualURL:     res.ManualURL,
-		TooLong:       res.TooLong,
+		FilePath:      res.FilePath,
 		TOMLPreview:   res.TOMLPreview,
 		AllCategories: submitCategories(form.Categories),
 	})
@@ -287,23 +274,9 @@ func tomlStringArray(items []string) string {
 	return "[" + strings.Join(parts, ", ") + "]"
 }
 
-// buildListingURL builds a GitHub "create file" URL pre-filled with the
-// rendered app.toml. For a user without push access, GitHub auto-forks the
-// repo and opens the web editor on their fork, ready to open a PR.
-func buildListingURL(repoURL, branch, name, toml string) string {
-	q := url.Values{}
-	q.Set("filename", "apps/"+name+"/app.toml")
-	q.Set("value", toml)
-	return strings.TrimRight(repoURL, "/") + "/new/" + url.PathEscape(branch) + "?" + q.Encode()
-}
-
-// buildFilePathURL builds a GitHub "create file" URL that pre-fills only the
-// target path, not the contents. Used as the manual fallback when the fully
-// pre-filled URL would exceed maxListingURLLen.
-func buildFilePathURL(repoURL, branch, name string) string {
-	q := url.Values{}
-	q.Set("filename", "apps/"+name+"/app.toml")
-	return strings.TrimRight(repoURL, "/") + "/new/" + url.PathEscape(branch) + "?" + q.Encode()
+// buildForkURL points to GitHub's fork dialog for the feed repo.
+func buildForkURL(repoURL string) string {
+	return strings.TrimRight(repoURL, "/") + "/fork"
 }
 
 func repoLabel(repoURL string) string {

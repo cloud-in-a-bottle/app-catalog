@@ -1,7 +1,6 @@
 package web
 
 import (
-	"net/url"
 	"strings"
 	"testing"
 )
@@ -87,47 +86,10 @@ func TestBuildListingEntryValidation(t *testing.T) {
 	}
 }
 
-func TestBuildListingURL(t *testing.T) {
-	toml := "[app]\nname = \"my-app\"\n"
-	got := buildListingURL("https://github.com/imbue-openhost/openhost-apps/", "main", "my-app", toml)
-
-	if !strings.HasPrefix(got, "https://github.com/imbue-openhost/openhost-apps/new/main?") {
-		t.Fatalf("unexpected prefix: %s", got)
-	}
-	u, err := url.Parse(got)
-	if err != nil {
-		t.Fatalf("parse url: %v", err)
-	}
-	if fn := u.Query().Get("filename"); fn != "apps/my-app/app.toml" {
-		t.Errorf("filename = %q", fn)
-	}
-	if v := u.Query().Get("value"); v != toml {
-		t.Errorf("value = %q, want %q", v, toml)
-	}
-}
-
-func TestListingURLLengthGuard(t *testing.T) {
-	entry, errs := buildListingEntry(submitForm{
-		Name:        "x",
-		Title:       "t",
-		Description: strings.Repeat("x", 9000),
-		RepoURL:     "https://github.com/you/x",
-	})
-	if len(errs) != 0 {
-		t.Fatalf("unexpected validation errors: %v", errs)
-	}
-
-	full := buildListingURL("https://github.com/imbue-openhost/openhost-apps", "main", entry.name, entry.toml)
-	if len(full) <= maxListingURLLen {
-		t.Fatalf("expected full URL (%d) to exceed limit %d", len(full), maxListingURLLen)
-	}
-
-	manual := buildFilePathURL("https://github.com/imbue-openhost/openhost-apps", "main", entry.name)
-	if len(manual) > maxListingURLLen {
-		t.Fatalf("manual fallback URL should be small, got %d", len(manual))
-	}
-	if !strings.Contains(manual, "filename=apps%2Fx%2Fapp.toml") || strings.Contains(manual, "value=") {
-		t.Fatalf("manual URL should pre-fill path only: %s", manual)
+func TestBuildForkURL(t *testing.T) {
+	got := buildForkURL("https://github.com/imbue-openhost/openhost-apps/")
+	if want := "https://github.com/imbue-openhost/openhost-apps/fork"; got != want {
+		t.Fatalf("fork url = %q, want %q", got, want)
 	}
 }
 
