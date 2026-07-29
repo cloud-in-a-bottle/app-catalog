@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -74,6 +75,11 @@ func (s *Server) handleSubmitCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if msg := s.checkRepoPublic(r.Context(), form.RepoURL); msg != "" {
+		s.renderSubmit(w, r, http.StatusBadRequest, form, []string{msg}, submitResult{})
+		return
+	}
+
 	res := submitResult{
 		FilePath:    "apps/" + entry.name + "/app.toml",
 		TOMLPreview: entry.toml,
@@ -129,6 +135,10 @@ func buildListingEntry(form submitForm) (listingEntry, []string) {
 		errs = append(errs, "Repository URL is required.")
 	case catalog.SafeURL(repoURL) == "":
 		errs = append(errs, "Repository URL must be an absolute http(s) URL.")
+	default:
+		if _, _, ok := parseGitHubRepo(repoURL); !ok {
+			errs = append(errs, "Repository URL must be a GitHub repo (https://github.com/owner/repo).")
+		}
 	}
 
 	iconURL := validateOptionalURL("Icon URL", form.IconURL, &errs)
@@ -277,6 +287,46 @@ func tomlStringArray(items []string) string {
 // buildForkURL points to GitHub's fork dialog for the feed repo.
 func buildForkURL(repoURL string) string {
 	return strings.TrimRight(repoURL, "/") + "/fork"
+}
+
+// parseGitHubRepo extracts the owner and repo from a github.com repo URL.
+func parseGitHubRepo(raw string) (owner, repo string, ok bool) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (u.Host != "github.com" && u.Host != "www.github.com") {
+		return "", "", false
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", false
+	}
+	return parts[0], strings.TrimSuffix(parts[1], ".git"), true
+}
+
+// checkRepoPublic verifies the GitHub repo exists and is reachable without
+// auth. Returns a user-facing message on failure, or "" when public.
+func (s *Server) checkRepoPublic(ctx context.Context, repoURL string) string {
+	if _, _, ok := parseGitHubRepo(repoURL); !ok {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(ctx, s.cfg.RequestTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, repoURL, nil)
+	if err != nil {
+		return ""
+	}
+	resp, err := s.http.Do(req)
+	if err != nil {
+		return "Could not reach GitHub to verify the repository. Try again."
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return ""
+	case http.StatusNotFound:
+		return "GitHub repository not found. Check the URL and make sure the repo is public."
+	default:
+		return "Could not verify the repository on GitHub. Try again."
+	}
 }
 
 func repoLabel(repoURL string) string {

@@ -63,6 +63,8 @@ func TestBuildListingEntryValidation(t *testing.T) {
 		{"missing title", submitForm{Name: "x", Description: "d", RepoURL: "https://github.com/you/x"}, "Title is required"},
 		{"missing repo", submitForm{Name: "x", Title: "t", Description: "d"}, "Repository URL is required"},
 		{"bad repo scheme", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "ftp://h/x"}, "absolute http(s) URL"},
+		{"non-github repo", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://gitlab.com/you/x"}, "GitHub repo"},
+		{"github no repo path", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you"}, "GitHub repo"},
 		{"bad category", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you/x", Categories: []string{"bogus"}}, "Unknown categories"},
 		{"bad icon", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you/x", IconURL: "javascript:alert(1)"}, "Icon URL"},
 		{"ref with space", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you/x", RepoRef: "a b"}, "whitespace"},
@@ -83,6 +85,28 @@ func TestBuildListingEntryValidation(t *testing.T) {
 				t.Fatalf("expected an error containing %q, got %v", tc.wantErr, errs)
 			}
 		})
+	}
+}
+
+func TestParseGitHubRepo(t *testing.T) {
+	tests := []struct {
+		raw         string
+		owner, repo string
+		ok          bool
+	}{
+		{"https://github.com/you/my-app", "you", "my-app", true},
+		{"https://www.github.com/you/my-app.git", "you", "my-app", true},
+		{"https://github.com/you/my-app/tree/main", "you", "my-app", true},
+		{"https://gitlab.com/you/my-app", "", "", false},
+		{"https://github.com/you", "", "", false},
+		{"not a url", "", "", false},
+	}
+	for _, tc := range tests {
+		owner, repo, ok := parseGitHubRepo(tc.raw)
+		if ok != tc.ok || owner != tc.owner || repo != tc.repo {
+			t.Errorf("parseGitHubRepo(%q) = (%q, %q, %v), want (%q, %q, %v)",
+				tc.raw, owner, repo, ok, tc.owner, tc.repo, tc.ok)
+		}
 	}
 }
 

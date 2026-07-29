@@ -50,7 +50,7 @@
       <input type="text" name="title" value="{{.Form.Title}}" required></label>
     <label>Description <span class="submit-hint">— one-line summary</span><br>
       <textarea name="description" rows="2" required>{{.Form.Description}}</textarea></label>
-    <label>Repository URL <span class="submit-hint">— repo containing the app's <code>openhost.toml</code></span><br>
+    <label>Repository URL <span class="submit-hint">— public GitHub repo containing the app's <code>openhost.toml</code></span><br>
       <input type="url" name="repo_url" value="{{.Form.RepoURL}}" placeholder="https://github.com/you/your-app" required></label>
     <label>Repo ref <span class="submit-hint">— optional; branch, tag, or commit to pin</span><br>
       <input type="text" name="repo_ref" value="{{.Form.RepoRef}}"></label>
