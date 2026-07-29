@@ -30,18 +30,17 @@
 
   {{if .TOMLPreview}}
   <div class="result-panel">
-    <p><strong>Your catalog entry is ready.</strong> Copy it, then add it to the feed repo:</p>
+    <p>Copy the generated catalog entry and contribute it in the repo</p>
     <div class="toml-block">
       <button type="button" class="btn copy-btn" data-copy="toml-entry">Copy</button>
       <pre class="toml-preview" id="toml-entry">{{.TOMLPreview}}</pre>
     </div>
     <ol class="submit-steps">
       <li><a class="btn btn-primary" href="{{.ForkURL}}" target="_blank" rel="noopener">Fork <code>{{.RepoLabel}}</code> on GitHub &rarr;</a></li>
-      <li>In your fork, create a new file at <code>{{.FilePath}}</code> and paste the entry above into it.</li>
+      <li>In the fork, paste the entry in a new file at <code>{{.FilePath}}</code></li>
       <li>Commit to a new branch and open a pull request back to <code>{{.RepoLabel}}</code>.</li>
     </ol>
-    <p class="submit-hint">On open, CI runs the feed's <code>generate.py</code> to validate your entry. A maintainer reviews it before it appears in the catalog.</p>
-  </div>
+    <p class="submit-hint">On the pull request, CI regenerates <code>catalog.json</code>. A maintainer will review it. 
   {{end}}
 
   <form method="post" action="{{withBase .BasePath "/submit"}}" class="submit-form">
