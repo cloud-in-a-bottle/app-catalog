@@ -7,26 +7,62 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/BurntSushi/toml"
+
 	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
 )
 
-type submitForm struct {
-	Name        string
-	Title       string
-	Description string
-	RepoURL     string
-	RepoRef     string
-	IconURL     string
-	WebsiteURL  string
-	DocsURL     string
-	Tags        string
-	Categories  []string
+// submitTemplateTOML seeds the editor with a dummy entry. Required fields carry
+// placeholder values; optional fields are commented out.
+const submitTemplateTOML = `[app]
+name = "my-app"
+title = "My App"
+description = "One-line summary of what the app does."
+repo_url = "https://github.com/you/your-app"
+
+# Optional — uncomment and edit any you need:
+# repo_ref = "main"
+# icon_url = "https://example.com/icon.png"
+# website_url = "https://example.com"
+# docs_url = "https://example.com/docs"
+# tags = ["example", "self-hosted"]
+# categories = ["productivity"]
+`
+
+type appManifest struct {
+	App appManifestApp `toml:"app"`
 }
 
-type submitCategory struct {
-	Value   string
-	Label   string
-	Checked bool
+type appManifestApp struct {
+	Name        string   `toml:"name"`
+	Title       string   `toml:"title"`
+	Description string   `toml:"description"`
+	RepoURL     string   `toml:"repo_url"`
+	RepoRef     string   `toml:"repo_ref"`
+	IconURL     string   `toml:"icon_url"`
+	WebsiteURL  string   `toml:"website_url"`
+	DocsURL     string   `toml:"docs_url"`
+	Tags        []string `toml:"tags"`
+	Categories  []string `toml:"categories"`
+}
+
+// fieldDoc describes one app.toml key for the reference list under the editor.
+type fieldDoc struct {
+	Key  string
+	Desc string
+}
+
+var submitFieldDocs = []fieldDoc{
+	{"name", "Required. Lowercase, hyphenated; the name the app deploys as (e.g. my-app)."},
+	{"title", "Required. Display name."},
+	{"description", "Required. One-line summary."},
+	{"repo_url", "Required. Public GitHub repo containing the app's openhost.toml."},
+	{"repo_ref", "Optional. Branch, tag, or commit to pin."},
+	{"icon_url", "Optional. Absolute http(s) URL to an icon."},
+	{"website_url", "Optional. Upstream project homepage."},
+	{"docs_url", "Optional. Documentation URL."},
+	{"tags", `Optional. Array of strings, e.g. ["rss", "news"].`},
+	{"categories", "Optional. Array drawn from the allowed categories below."},
 }
 
 type submitPageData struct {
@@ -35,11 +71,12 @@ type submitPageData struct {
 	RepoURL       string
 	RepoLabel     string
 	ForkURL       string
-	Form          submitForm
+	TOMLInput     string
+	FieldDocs     []fieldDoc
+	Categories    []string
 	Errors        []string
 	FilePath      string
 	TOMLPreview   string
-	AllCategories []submitCategory
 }
 
 type submitResult struct {
@@ -48,36 +85,24 @@ type submitResult struct {
 }
 
 func (s *Server) handleSubmitPage(w http.ResponseWriter, r *http.Request) {
-	s.renderSubmit(w, r, http.StatusOK, submitForm{}, nil, submitResult{})
+	s.renderSubmit(w, r, http.StatusOK, submitTemplateTOML, nil, submitResult{})
 }
 
 func (s *Server) handleSubmitCreate(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.renderSubmit(w, r, http.StatusBadRequest, submitForm{}, []string{"Invalid form submission."}, submitResult{})
+		s.renderSubmit(w, r, http.StatusBadRequest, submitTemplateTOML, []string{"Invalid form submission."}, submitResult{})
 		return
 	}
 
-	form := submitForm{
-		Name:        strings.TrimSpace(r.Form.Get("name")),
-		Title:       strings.TrimSpace(r.Form.Get("title")),
-		Description: strings.TrimSpace(r.Form.Get("description")),
-		RepoURL:     strings.TrimSpace(r.Form.Get("repo_url")),
-		RepoRef:     strings.TrimSpace(r.Form.Get("repo_ref")),
-		IconURL:     strings.TrimSpace(r.Form.Get("icon_url")),
-		WebsiteURL:  strings.TrimSpace(r.Form.Get("website_url")),
-		DocsURL:     strings.TrimSpace(r.Form.Get("docs_url")),
-		Tags:        strings.TrimSpace(r.Form.Get("tags")),
-		Categories:  r.Form["categories"],
-	}
-
-	entry, errs := buildListingEntry(form)
+	raw := r.Form.Get("toml")
+	entry, errs := buildListingEntry(raw)
 	if len(errs) > 0 {
-		s.renderSubmit(w, r, http.StatusBadRequest, form, errs, submitResult{})
+		s.renderSubmit(w, r, http.StatusBadRequest, raw, errs, submitResult{})
 		return
 	}
 
-	if msg := s.checkRepo(r.Context(), form.RepoURL, form.RepoRef); msg != "" {
-		s.renderSubmit(w, r, http.StatusBadRequest, form, []string{msg}, submitResult{})
+	if msg := s.checkRepo(r.Context(), entry.repoURL, entry.repoRef); msg != "" {
+		s.renderSubmit(w, r, http.StatusBadRequest, raw, []string{msg}, submitResult{})
 		return
 	}
 
@@ -85,75 +110,87 @@ func (s *Server) handleSubmitCreate(w http.ResponseWriter, r *http.Request) {
 		FilePath:    "apps/" + entry.name + "/app.toml",
 		TOMLPreview: entry.toml,
 	}
-	s.renderSubmit(w, r, http.StatusOK, form, nil, res)
+	s.renderSubmit(w, r, http.StatusOK, raw, nil, res)
 }
 
-func (s *Server) renderSubmit(w http.ResponseWriter, r *http.Request, status int, form submitForm, errs []string, res submitResult) {
+func (s *Server) renderSubmit(w http.ResponseWriter, r *http.Request, status int, tomlInput string, errs []string, res submitResult) {
 	s.render(w, status, "submit.html", submitPageData{
 		BasePath:      s.basePathForRequest(r),
 		RouterBaseURL: s.routerBaseURL(r),
 		RepoURL:       s.cfg.SubmitRepoURL,
 		RepoLabel:     repoLabel(s.cfg.SubmitRepoURL),
 		ForkURL:       buildForkURL(s.cfg.SubmitRepoURL),
-		Form:          form,
+		TOMLInput:     tomlInput,
+		FieldDocs:     submitFieldDocs,
+		Categories:    catalog.SortedCategories(),
 		Errors:        errs,
 		FilePath:      res.FilePath,
 		TOMLPreview:   res.TOMLPreview,
-		AllCategories: submitCategories(form.Categories),
 	})
 }
 
 type listingEntry struct {
-	name string
-	toml string
+	name    string
+	toml    string
+	repoURL string
+	repoRef string
 }
 
-// buildListingEntry validates a submission against the same rules the feed
-// ingest enforces and, when valid, renders the app.toml for the new entry.
-func buildListingEntry(form submitForm) (listingEntry, []string) {
+// buildListingEntry parses the submitted app.toml, validates it against the
+// same rules the feed ingest enforces, and re-renders it in canonical form.
+func buildListingEntry(rawTOML string) (listingEntry, []string) {
+	if strings.TrimSpace(rawTOML) == "" {
+		return listingEntry{}, []string{"Paste your app.toml entry."}
+	}
+	var m appManifest
+	if _, err := toml.Decode(rawTOML, &m); err != nil {
+		return listingEntry{}, []string{"Could not parse TOML: " + err.Error()}
+	}
+	app := m.App
+
 	var errs []string
 
-	name := strings.TrimSpace(form.Name)
+	name := strings.TrimSpace(app.Name)
 	switch {
 	case name == "":
-		errs = append(errs, "App name is required.")
+		errs = append(errs, "name is required.")
 	case !catalog.ValidAppID(name):
-		errs = append(errs, "App name must be lowercase alphanumeric with optional interior hyphens (e.g. my-app).")
+		errs = append(errs, "name must be lowercase alphanumeric with optional interior hyphens (e.g. my-app).")
 	}
 
-	title := strings.TrimSpace(form.Title)
+	title := strings.TrimSpace(app.Title)
 	if title == "" {
-		errs = append(errs, "Title is required.")
+		errs = append(errs, "title is required.")
 	}
-	description := strings.TrimSpace(form.Description)
+	description := strings.TrimSpace(app.Description)
 	if description == "" {
-		errs = append(errs, "Description is required.")
+		errs = append(errs, "description is required.")
 	}
 
-	repoURL := strings.TrimSpace(form.RepoURL)
+	repoURL := strings.TrimSpace(app.RepoURL)
 	switch {
 	case repoURL == "":
-		errs = append(errs, "Repository URL is required.")
+		errs = append(errs, "repo_url is required.")
 	default:
 		if _, _, _, ok := parseGitHubRepo(repoURL); !ok {
-			errs = append(errs, "Repository URL must be a GitHub repo (https://github.com/owner/repo).")
+			errs = append(errs, "repo_url must be a GitHub repo (https://github.com/owner/repo).")
 		}
 	}
 
-	iconURL := validateOptionalURL("Icon URL", form.IconURL, &errs)
-	websiteURL := validateOptionalURL("Website URL", form.WebsiteURL, &errs)
-	docsURL := validateOptionalURL("Docs URL", form.DocsURL, &errs)
+	iconURL := validateOptionalURL("icon_url", app.IconURL, &errs)
+	websiteURL := validateOptionalURL("website_url", app.WebsiteURL, &errs)
+	docsURL := validateOptionalURL("docs_url", app.DocsURL, &errs)
 
-	repoRef := strings.TrimSpace(form.RepoRef)
+	repoRef := strings.TrimSpace(app.RepoRef)
 	if strings.ContainsAny(repoRef, " \t\r\n") {
-		errs = append(errs, "Repo ref must not contain whitespace.")
+		errs = append(errs, "repo_ref must not contain whitespace.")
 	}
 
-	tags := splitCommaList(form.Tags)
+	tags := compactStrings(app.Tags)
 
-	categories := make([]string, 0, len(form.Categories))
+	categories := make([]string, 0, len(app.Categories))
 	var badCategories []string
-	for _, c := range form.Categories {
+	for _, c := range app.Categories {
 		c = strings.TrimSpace(c)
 		if c == "" {
 			continue
@@ -184,7 +221,7 @@ func buildListingEntry(form submitForm) (listingEntry, []string) {
 		Tags:        tags,
 		Categories:  categories,
 	})
-	return listingEntry{name: name, toml: toml}, nil
+	return listingEntry{name: name, toml: toml, repoURL: repoURL, repoRef: repoRef}, nil
 }
 
 func validateOptionalURL(label, raw string, errs *[]string) string {
@@ -199,11 +236,11 @@ func validateOptionalURL(label, raw string, errs *[]string) string {
 	return raw
 }
 
-func splitCommaList(s string) []string {
-	out := make([]string, 0)
-	for _, p := range strings.Split(s, ",") {
-		if p = strings.TrimSpace(p); p != "" {
-			out = append(out, p)
+func compactStrings(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
 		}
 	}
 	return out
@@ -328,20 +365,46 @@ func (s *Server) checkRepo(ctx context.Context, repoURL, repoRef string) string 
 		return "Could not reach GitHub to verify the repository. Try again."
 	}
 
-	ref := repoRef
-	if ref == "" {
-		ref = urlRef
+	found, reachable := s.findManifest(ctx, owner, repo, candidateRefs(repoRef, urlRef))
+	if found {
+		return ""
 	}
-	if ref == "" {
-		ref = "HEAD"
-	}
-	manifestURL := "https://raw.githubusercontent.com/" + owner + "/" + repo + "/" + ref + "/openhost.toml"
-	if exists, notFound := classifyHead(s.headStatus(ctx, manifestURL)); notFound {
-		return "No openhost.toml found at the repository root."
-	} else if !exists {
+	if !reachable {
 		return "Could not reach GitHub to verify openhost.toml. Try again."
 	}
-	return ""
+	return "No openhost.toml found at the repository root."
+}
+
+// candidateRefs orders the refs to probe for openhost.toml: an explicit pin,
+// any ref from the URL, then the default branch. Falling back to the default
+// branch means a pasted /tree/<branch> link still validates.
+func candidateRefs(repoRef, urlRef string) []string {
+	refs := make([]string, 0, 3)
+	seen := make(map[string]bool, 3)
+	for _, ref := range []string{repoRef, urlRef, "HEAD"} {
+		if ref == "" || seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		refs = append(refs, ref)
+	}
+	return refs
+}
+
+// findManifest reports whether openhost.toml exists at the root of any ref.
+// reachable is false only when every probe failed to reach GitHub.
+func (s *Server) findManifest(ctx context.Context, owner, repo string, refs []string) (found, reachable bool) {
+	for _, ref := range refs {
+		u := "https://raw.githubusercontent.com/" + owner + "/" + repo + "/" + ref + "/openhost.toml"
+		exists, notFound := classifyHead(s.headStatus(ctx, u))
+		if exists {
+			return true, true
+		}
+		if notFound {
+			reachable = true
+		}
+	}
+	return false, reachable
 }
 
 // classifyHead maps a HEAD status to existence: a 2xx or redirect means the
@@ -363,6 +426,7 @@ func (s *Server) headStatus(ctx context.Context, rawURL string) int {
 	if err != nil {
 		return 0
 	}
+	req.Header.Set("User-Agent", "openhost-catalog")
 	resp, err := s.http.Do(req)
 	if err != nil {
 		return 0
@@ -377,17 +441,4 @@ func repoLabel(repoURL string) string {
 		return repoURL
 	}
 	return strings.Trim(u.Path, "/")
-}
-
-func submitCategories(selected []string) []submitCategory {
-	sel := make(map[string]bool, len(selected))
-	for _, c := range selected {
-		sel[strings.TrimSpace(c)] = true
-	}
-	cats := catalog.SortedCategories()
-	out := make([]submitCategory, 0, len(cats))
-	for _, c := range cats {
-		out = append(out, submitCategory{Value: c, Label: categoryLabel(c), Checked: sel[c]})
-	}
-	return out
 }

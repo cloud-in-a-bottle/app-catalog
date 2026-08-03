@@ -54,30 +54,75 @@ func TestBuildAppTOMLIncludesOptionals(t *testing.T) {
 
 func TestBuildListingEntryValidation(t *testing.T) {
 	tests := []struct {
-		name    string
-		form    submitForm
-		wantErr string // substring; "" means expect success
+		name     string
+		toml     string
+		wantName string // non-empty means expect success with this name
+		wantErr  string // substring; "" means expect success
 	}{
-		{"valid", submitForm{Name: "my-app", Title: "My App", Description: "d", RepoURL: "https://github.com/you/my-app", Categories: []string{"ai"}}, ""},
-		{"bad name", submitForm{Name: "My_App", Title: "t", Description: "d", RepoURL: "https://github.com/you/x"}, "lowercase alphanumeric"},
-		{"missing title", submitForm{Name: "x", Description: "d", RepoURL: "https://github.com/you/x"}, "Title is required"},
-		{"missing repo", submitForm{Name: "x", Title: "t", Description: "d"}, "Repository URL is required"},
-		{"bad repo scheme", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "ftp://github.com/you/x"}, "GitHub repo"},
-		{"non-github repo", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://gitlab.com/you/x"}, "GitHub repo"},
-		{"github no repo path", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you"}, "GitHub repo"},
-		{"bad category", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you/x", Categories: []string{"bogus"}}, "Unknown categories"},
-		{"bad icon", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you/x", IconURL: "javascript:alert(1)"}, "Icon URL"},
-		{"ref with space", submitForm{Name: "x", Title: "t", Description: "d", RepoURL: "https://github.com/you/x", RepoRef: "a b"}, "whitespace"},
+		{"valid", `[app]
+name = "my-app"
+title = "My App"
+description = "d"
+repo_url = "https://github.com/you/my-app"
+categories = ["ai"]`, "my-app", ""},
+		{"parse error", `[app] name = broken`, "", "Could not parse"},
+		{"empty", "  \n ", "", "Paste your app.toml"},
+		{"bad name", `[app]
+name = "My_App"
+title = "t"
+description = "d"
+repo_url = "https://github.com/you/x"`, "", "lowercase alphanumeric"},
+		{"missing title", `[app]
+name = "x"
+description = "d"
+repo_url = "https://github.com/you/x"`, "", "title is required"},
+		{"missing repo", `[app]
+name = "x"
+title = "t"
+description = "d"`, "", "repo_url is required"},
+		{"bad repo scheme", `[app]
+name = "x"
+title = "t"
+description = "d"
+repo_url = "ftp://github.com/you/x"`, "", "GitHub repo"},
+		{"non-github repo", `[app]
+name = "x"
+title = "t"
+description = "d"
+repo_url = "https://gitlab.com/you/x"`, "", "GitHub repo"},
+		{"github no repo path", `[app]
+name = "x"
+title = "t"
+description = "d"
+repo_url = "https://github.com/you"`, "", "GitHub repo"},
+		{"bad category", `[app]
+name = "x"
+title = "t"
+description = "d"
+repo_url = "https://github.com/you/x"
+categories = ["bogus"]`, "", "Unknown categories"},
+		{"bad icon", `[app]
+name = "x"
+title = "t"
+description = "d"
+repo_url = "https://github.com/you/x"
+icon_url = "javascript:alert(1)"`, "", "icon_url"},
+		{"ref with space", `[app]
+name = "x"
+title = "t"
+description = "d"
+repo_url = "https://github.com/you/x"
+repo_ref = "a b"`, "", "whitespace"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			entry, errs := buildListingEntry(tc.form)
+			entry, errs := buildListingEntry(tc.toml)
 			if tc.wantErr == "" {
 				if len(errs) != 0 {
 					t.Fatalf("expected no errors, got %v", errs)
 				}
-				if entry.name != tc.form.Name || entry.toml == "" {
-					t.Fatalf("expected populated entry, got %+v", entry)
+				if entry.name != tc.wantName || entry.toml == "" {
+					t.Fatalf("expected populated entry named %q, got %+v", tc.wantName, entry)
 				}
 				return
 			}
@@ -85,6 +130,26 @@ func TestBuildListingEntryValidation(t *testing.T) {
 				t.Fatalf("expected an error containing %q, got %v", tc.wantErr, errs)
 			}
 		})
+	}
+}
+
+func TestCandidateRefs(t *testing.T) {
+	tests := []struct {
+		repoRef, urlRef string
+		want            []string
+	}{
+		{"", "", []string{"HEAD"}},
+		{"v1", "", []string{"v1", "HEAD"}},
+		{"", "main", []string{"main", "HEAD"}},
+		{"v1", "main", []string{"v1", "main", "HEAD"}},
+		{"HEAD", "HEAD", []string{"HEAD"}},
+		{"main", "main", []string{"main", "HEAD"}},
+	}
+	for _, tc := range tests {
+		got := candidateRefs(tc.repoRef, tc.urlRef)
+		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
+			t.Errorf("candidateRefs(%q, %q) = %v, want %v", tc.repoRef, tc.urlRef, got, tc.want)
+		}
 	}
 }
 
