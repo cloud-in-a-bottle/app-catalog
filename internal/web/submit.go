@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -106,6 +107,11 @@ func (s *Server) handleSubmitCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if msg := s.checkLinks(r.Context(), entry); msg != "" {
+		s.renderSubmit(w, r, http.StatusBadRequest, raw, []string{msg}, submitResult{})
+		return
+	}
+
 	res := submitResult{
 		FilePath:    "apps/" + entry.name + "/app.toml",
 		TOMLPreview: entry.toml,
@@ -130,10 +136,13 @@ func (s *Server) renderSubmit(w http.ResponseWriter, r *http.Request, status int
 }
 
 type listingEntry struct {
-	name    string
-	toml    string
-	repoURL string
-	repoRef string
+	name       string
+	toml       string
+	repoURL    string
+	repoRef    string
+	iconURL    string
+	websiteURL string
+	docsURL    string
 }
 
 // buildListingEntry parses the submitted app.toml, validates it against the
@@ -221,7 +230,15 @@ func buildListingEntry(rawTOML string) (listingEntry, []string) {
 		Tags:        tags,
 		Categories:  categories,
 	})
-	return listingEntry{name: name, toml: toml, repoURL: repoURL, repoRef: repoRef}, nil
+	return listingEntry{
+		name:       name,
+		toml:       toml,
+		repoURL:    repoURL,
+		repoRef:    repoRef,
+		iconURL:    iconURL,
+		websiteURL: websiteURL,
+		docsURL:    docsURL,
+	}, nil
 }
 
 func validateOptionalURL(label, raw string, errs *[]string) string {
@@ -373,6 +390,35 @@ func (s *Server) checkRepo(ctx context.Context, repoURL, repoRef string) string 
 		return "Could not reach GitHub to verify openhost.toml. Try again."
 	}
 	return "No openhost.toml found at the repository root."
+}
+
+var lookupHost = net.DefaultResolver.LookupHost
+
+// checkLinks verifies the optional icon, website, and docs URLs point at
+// domains that resolve. Returns a user-facing message on the first failure.
+func (s *Server) checkLinks(ctx context.Context, entry listingEntry) string {
+	ctx, cancel := context.WithTimeout(ctx, s.cfg.RequestTimeout)
+	defer cancel()
+	for _, l := range []struct{ label, rawURL string }{
+		{"icon_url", entry.iconURL},
+		{"website_url", entry.websiteURL},
+		{"docs_url", entry.docsURL},
+	} {
+		if l.rawURL != "" && !hostResolves(ctx, l.rawURL) {
+			return l.label + " domain does not resolve. Check the URL."
+		}
+	}
+	return ""
+}
+
+// hostResolves reports whether rawURL's host resolves via DNS.
+func hostResolves(ctx context.Context, rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Hostname() == "" {
+		return false
+	}
+	addrs, err := lookupHost(ctx, u.Hostname())
+	return err == nil && len(addrs) > 0
 }
 
 // candidateRefs orders the refs to probe for openhost.toml: an explicit pin,

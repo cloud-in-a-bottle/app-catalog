@@ -1,6 +1,8 @@
 package web
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -173,6 +175,31 @@ func TestParseGitHubRepo(t *testing.T) {
 		if ok != tc.ok || owner != tc.owner || repo != tc.repo || ref != tc.ref {
 			t.Errorf("parseGitHubRepo(%q) = (%q, %q, %q, %v), want (%q, %q, %q, %v)",
 				tc.raw, owner, repo, ref, ok, tc.owner, tc.repo, tc.ref, tc.ok)
+		}
+	}
+}
+
+func TestHostResolves(t *testing.T) {
+	orig := lookupHost
+	defer func() { lookupHost = orig }()
+	lookupHost = func(_ context.Context, host string) ([]string, error) {
+		if host == "good.example" {
+			return []string{"1.2.3.4"}, nil
+		}
+		return nil, errors.New("no such host")
+	}
+	tests := []struct {
+		rawURL string
+		want   bool
+	}{
+		{"https://good.example/icon.png", true},
+		{"https://good.example:8443/icon.png", true},
+		{"https://bad.example/icon.png", false},
+		{"not a url", false},
+	}
+	for _, tc := range tests {
+		if got := hostResolves(context.Background(), tc.rawURL); got != tc.want {
+			t.Errorf("hostResolves(%q) = %v, want %v", tc.rawURL, got, tc.want)
 		}
 	}
 }
