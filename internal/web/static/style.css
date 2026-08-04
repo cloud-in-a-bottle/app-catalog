@@ -126,3 +126,20 @@ mark { background: #fef08a; color: inherit; padding: 0 0.1em; border-radius: 2px
 
 .sync-warning { background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em; }
 
+/* List your app ----------------------------------------------------------- */
+
+.submit-form { max-width: 720px; }
+.submit-form label { display: block; margin-bottom: 0.9em; font-weight: 600; }
+.submit-form textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 0.35em; padding: 0.6em; font-family: monospace; font-size: 0.9em; font-weight: normal; }
+.submit-hint { font-weight: normal; color: #888; font-size: 0.85em; }
+.field-docs { display: grid; grid-template-columns: max-content 1fr; gap: 0.25em 0.9em; margin: 0 0 1.2em; font-size: 0.9em; }
+.field-docs dt { font-weight: 600; }
+.field-docs dd { margin: 0; color: #555; }
+.result-panel { border: 1px solid #cde; background: #f5f9ff; border-radius: 6px; padding: 0.8em 1.2em; margin: 1.2em 0; }
+.toml-block { position: relative; }
+.toml-preview { background: #1e1e1e; color: #d4d4d4; padding: 1em; font-size: 0.85em; overflow-x: auto; border-radius: 4px; font-family: monospace; white-space: pre; }
+.copy-btn { position: absolute; top: 0.5em; right: 0.5em; }
+.submit-steps { margin: 1em 0 0.5em; padding-left: 1.4em; }
+.submit-steps li { margin-bottom: 0.6em; }
+.error-list { color: #c00; }
+

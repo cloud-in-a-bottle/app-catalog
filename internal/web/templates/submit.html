@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>List your app · OpenHost Catalog</title>
+  <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
+</head>
+<body>
+  <h1>OpenHost Catalog</h1>
+  <nav>
+    <a href="{{withBase .BasePath "/"}}">Catalog</a>
+    <a href="{{withBase .BasePath "/sources"}}">Sources</a>
+    <a href="{{withBase .BasePath "/?advanced"}}">Advanced Search</a>
+    <a href="{{withBase .BasePath "/submit"}}" class="nav-active">List your app</a>
+    <span class="spacer"></span>
+    <a href="{{.RouterBaseURL}}" class="nav-dashboard">&larr; Back to Openhost Dashboard</a>
+  </nav>
+
+  <h2>List your app</h2>
+  <p style="color:#666;">Add your app to the catalog by opening a pull request against
+    <a href="{{.RepoURL}}" target="_blank" rel="noopener"><code>{{.RepoLabel}}</code></a>.
+    Fill in the details below to generate your catalog entry, then follow the steps to add it and open a pull request.
+    A maintainer reviews every submission before it appears in the catalog.</p>
+
+  {{if .Errors}}
+  <div class="error-list">
+    <strong>Please fix the following:</strong>
+    <ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul>
+  </div>
+  {{end}}
+
+  {{if .TOMLPreview}}
+  <div class="result-panel">
+    <p>Copy the generated catalog entry and contribute it in the repo</p>
+    <div class="toml-block">
+      <button type="button" class="btn copy-btn" data-copy="toml-entry">Copy</button>
+      <pre class="toml-preview" id="toml-entry">{{.TOMLPreview}}</pre>
+    </div>
+    <ol class="submit-steps">
+      <li><a class="btn btn-primary" href="{{.ForkURL}}" target="_blank" rel="noopener">Fork <code>{{.RepoLabel}}</code> on GitHub &rarr;</a></li>
+      <li>In the fork, paste the entry in a new file at <code>{{.FilePath}}</code></li>
+      <li>Commit to a new branch and open a pull request back to <code>{{.RepoLabel}}</code>.</li>
+    </ol>
+    <p class="submit-hint">On the pull request, CI regenerates <code>catalog.json</code>. A maintainer will review it.</p>
+  </div>
+  {{end}}
+
+  <form method="post" action="{{withBase .BasePath "/submit"}}" class="submit-form">
+    <label>App entry <span class="submit-hint">— edit the values below; this becomes <code>apps/&lt;name&gt;/app.toml</code></span>
+      <textarea name="toml" rows="14" spellcheck="false" required>{{.TOMLInput}}</textarea></label>
+    <dl class="field-docs">
+      {{range .FieldDocs}}<dt><code>{{.Key}}</code></dt><dd>{{.Desc}}</dd>{{end}}
+    </dl>
+    <p class="submit-hint">Allowed categories: {{range $i, $c := .Categories}}{{if $i}}, {{end}}<code>{{$c}}</code>{{end}}.</p>
+    <p class="submit-hint" style="margin-top:0;">The OpenHost integration score is assigned by maintainers during review.</p>
+    <button type="submit" class="btn btn-primary">Generate catalog entry</button>
+  </form>
+
+  <script>
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".copy-btn");
+      if (!btn) return;
+      var el = document.getElementById(btn.dataset.copy);
+      if (!el || !navigator.clipboard) return;
+      navigator.clipboard.writeText(el.textContent).then(function () {
+        var prev = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = prev; }, 1500);
+      });
+    });
+  </script>
+</body>
+</html>

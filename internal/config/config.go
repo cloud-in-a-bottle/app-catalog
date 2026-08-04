@@ -18,6 +18,7 @@ type Config struct {
 	AllowFileRepoURLs bool
 	RequestTimeout    time.Duration
 	DefaultSourceURL  string
+	SubmitRepoURL     string
 }
 
 func Load() Config {
@@ -32,6 +33,7 @@ func Load() Config {
 		AllowFileRepoURLs: boolEnv("CATALOG_ALLOW_FILE_URLS", false),
 		RequestTimeout:    timeoutFromEnv(),
 		DefaultSourceURL:  envOrDefault("DEFAULT_SOURCE_URL", "https://raw.githubusercontent.com/imbue-openhost/openhost-apps/main/catalog.json"),
+		SubmitRepoURL:     strings.TrimRight(envOrDefault("CATALOG_SUBMIT_REPO_URL", "https://github.com/imbue-openhost/openhost-apps"), "/"),
 	}
 }
 

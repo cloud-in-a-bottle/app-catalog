@@ -173,6 +173,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/sources/"):
 		s.handleSourceAction(w, r)
 		return
+	case r.Method == http.MethodGet && r.URL.Path == "/submit":
+		s.handleSubmitPage(w, r)
+		return
+	case r.Method == http.MethodPost && r.URL.Path == "/submit":
+		s.handleSubmitCreate(w, r)
+		return
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/apps/"):
 		s.handleAppDetail(w, r)
 		return
