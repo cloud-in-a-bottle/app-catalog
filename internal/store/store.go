@@ -302,6 +302,22 @@ func (s *Store) DeleteSource(ctx context.Context, id string) error {
 	return nil
 }
 
+// SetSourceURL repoints an existing source at a new feed URL. Used to move a
+// persisted URL off a renamed GitHub owner; see internal/orgrename.
+func (s *Store) SetSourceURL(ctx context.Context, id string, feedURL string) error {
+	_, err := s.db.ExecContext(
+		ctx,
+		`UPDATE sources SET url = ?, updated_at = ? WHERE id = ?`,
+		feedURL,
+		nowString(),
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("update source url: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) ReplaceCatalogAppsForSource(ctx context.Context, sourceID string, apps []CatalogApp) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
