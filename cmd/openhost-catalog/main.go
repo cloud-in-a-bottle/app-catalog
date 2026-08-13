@@ -11,6 +11,7 @@ import (
 
 	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
 	"github.com/imbue-openhost/openhost-catalog/internal/config"
+	"github.com/imbue-openhost/openhost-catalog/internal/orgrename"
 	"github.com/imbue-openhost/openhost-catalog/internal/store"
 	"github.com/imbue-openhost/openhost-catalog/internal/web"
 )
@@ -28,6 +29,7 @@ func main() {
 		log.Fatalf("initialize store schema: %v", err)
 	}
 
+	reconcileSourceOwners(st)
 	seedDefaultSource(cfg, st)
 
 	handler, err := web.NewServer(cfg, st)
@@ -56,6 +58,36 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Printf("shutdown error: %v", err)
+	}
+}
+
+// reconcileSourceOwners moves any persisted feed URL off the pre-rename GitHub
+// owner. Runs before seedDefaultSource so a rewritten source still counts as
+// an existing source and does not get duplicated.
+//
+// Idempotent, and inert until orgrename.NewOrg is set. Never fatal: a stale
+// URL still resolves through GitHub's owner redirect, so failing to rewrite is
+// a risk to close later, not a reason to refuse to start.
+func reconcileSourceOwners(st *store.Store) {
+	if !orgrename.Enabled() {
+		return
+	}
+	ctx := context.Background()
+	sources, err := st.ListSources(ctx)
+	if err != nil {
+		log.Printf("orgrename: failed to list sources: %v", err)
+		return
+	}
+	for _, src := range sources {
+		rewritten, changed := orgrename.Rewrite(src.URL)
+		if !changed {
+			continue
+		}
+		if err := st.SetSourceURL(ctx, src.ID, rewritten); err != nil {
+			log.Printf("orgrename: failed to repoint source %s: %v", src.ID, err)
+			continue
+		}
+		log.Printf("orgrename: source %s repointed %s -> %s", src.ID, src.URL, rewritten)
 	}
 }
 
