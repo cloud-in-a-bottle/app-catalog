@@ -277,7 +277,7 @@ type appTOMLFields struct {
 }
 
 // buildAppTOML renders an apps/<name>/app.toml entry, omitting optional
-// fields that are empty. Field order matches the openhost-apps convention.
+// fields that are empty. Field order matches the app-manifest convention.
 func buildAppTOML(f appTOMLFields) string {
 	var b strings.Builder
 	b.WriteString("[app]\n")

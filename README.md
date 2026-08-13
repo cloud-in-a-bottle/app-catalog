@@ -64,7 +64,7 @@ renders it as "—" / "Unrated"; it does not mean a score of zero. The catalog
 clamps the score to 1-5 on ingest.
 
 The canonical rubric and the checklist for assigning a score live in the feed
-repo: [openhost-apps/SCORING.md](https://github.com/imbue-openhost/openhost-apps/blob/main/SCORING.md).
+repo: [app-manifest/SCORING.md](https://github.com/imbue-openhost/app-manifest/blob/main/SCORING.md).
 
 ### How it's surfaced
 
@@ -82,7 +82,7 @@ repo: [openhost-apps/SCORING.md](https://github.com/imbue-openhost/openhost-apps
 - `OPENHOST_APP_TOKEN` (injected by OpenHost; used as the bearer when calling the installer service)
 - `OPENHOST_APP_NAME` (default `openhost-catalog`)
 - `OPENHOST_APP_BASE_PATH` (injected by OpenHost; used for path-based routing compatibility)
-- `DEFAULT_SOURCE_URL` (auto-seeded on first boot if no sources are configured; defaults to the official `imbue-openhost/openhost-apps` catalog)
+- `DEFAULT_SOURCE_URL` (auto-seeded on first boot if no sources are configured; defaults to the official `imbue-openhost/app-manifest` catalog)
 - `CATALOG_ALLOW_HTTP_REPO_URLS` (default `false`)
 - `CATALOG_ALLOW_FILE_URLS` (default `false`)
 - `CATALOG_HTTP_TIMEOUT_SECONDS` (default `10`)

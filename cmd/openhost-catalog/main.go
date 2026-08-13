@@ -29,7 +29,7 @@ func main() {
 		log.Fatalf("initialize store schema: %v", err)
 	}
 
-	reconcileSourceOwners(st)
+	reconcileSourceURLs(st)
 	seedDefaultSource(cfg, st)
 
 	handler, err := web.NewServer(cfg, st)
@@ -61,17 +61,16 @@ func main() {
 	}
 }
 
-// reconcileSourceOwners moves any persisted feed URL off the pre-rename GitHub
-// owner. Runs before seedDefaultSource so a rewritten source still counts as
-// an existing source and does not get duplicated.
+// reconcileSourceURLs moves any persisted feed URL off a renamed repository or
+// owner. Runs before seedDefaultSource so a rewritten source still counts as an
+// existing source and does not get duplicated.
 //
-// Idempotent, and inert until orgrename.NewOrg is set. Never fatal: a stale
-// URL still resolves through GitHub's owner redirect, so failing to rewrite is
-// a risk to close later, not a reason to refuse to start.
-func reconcileSourceOwners(st *store.Store) {
-	if !orgrename.Enabled() {
-		return
-	}
+// Not gated on orgrename.Enabled(): the repository move (openhost-apps ->
+// app-manifest) has already happened and its new path resolves now, while the
+// owner move stays gated inside orgrename.Rewrite. Idempotent, and never
+// fatal -- a stale URL still resolves through GitHub's redirect, so failing to
+// rewrite is a risk to close, not a reason to refuse to start.
+func reconcileSourceURLs(st *store.Store) {
 	ctx := context.Background()
 	sources, err := st.ListSources(ctx)
 	if err != nil {

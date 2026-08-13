@@ -14,9 +14,36 @@ func TestShipsInertUntilTheRenameIsDone(t *testing.T) {
 	if Enabled() {
 		t.Fatal("Enabled() must be false while OrgRenameComplete is false")
 	}
-	feed := "https://raw.githubusercontent.com/" + OldOrg + "/openhost-apps/main/catalog.json"
+	// The owner must not move while the switch is off. (The repo segment may:
+	// that rename already happened -- see TestRepoMoveIsActive.)
+	feed := "https://raw.githubusercontent.com/" + OldOrg + "/app-manifest/main/catalog.json"
 	if got, changed := Rewrite(feed); changed || got != feed {
 		t.Fatalf("disabled rewrite changed the URL: %q changed=%v", got, changed)
+	}
+}
+
+func TestRepoMoveIsActiveWhileTheOrgMoveIsGated(t *testing.T) {
+	// openhost-apps -> app-manifest has already happened, so instances should
+	// move off the old path now. The owner stays put until the org rename.
+	in := "https://raw.githubusercontent.com/" + OldOrg + "/openhost-apps/main/catalog.json"
+	want := "https://raw.githubusercontent.com/" + OldOrg + "/app-manifest/main/catalog.json"
+	got, changed := Rewrite(in)
+	if !changed || got != want {
+		t.Fatalf("got %q changed=%v, want %q true", got, changed, want)
+	}
+}
+
+func TestRepoMoveLeavesUnknownReposAlone(t *testing.T) {
+	in := "https://github.com/" + OldOrg + "/bottled-navidrome"
+	if got, changed := RewriteRepo(in); changed || got != in {
+		t.Fatalf("rewrote %q -> %q; expected untouched", in, got)
+	}
+}
+
+func TestRepoMoveIsIdempotent(t *testing.T) {
+	in := "https://raw.githubusercontent.com/" + OldOrg + "/app-manifest/main/catalog.json"
+	if got, changed := RewriteRepo(in); changed || got != in {
+		t.Fatalf("second pass changed %q -> %q", in, got)
 	}
 }
 

@@ -30,6 +30,14 @@ import (
 // OldOrg is the owner every currently-deployed instance has persisted.
 const OldOrg = "imbue-openhost"
 
+// repoMoves are repository renames that have ALREADY happened. Rewriting to
+// them is safe immediately, unlike the org move below: the new path resolves
+// now, and a repo rename inside an org can only have its redirect overridden by
+// a member of that org, not by an outside claimant.
+var repoMoves = map[string]string{
+	"openhost-apps": "app-manifest",
+}
+
 // NewOrg is the owner to move to. Decided; the GitHub org has not been renamed
 // yet.
 const NewOrg = "cloud-in-a-bottle"
@@ -82,13 +90,44 @@ func RewriteOwner(raw, oldOrg, newOrg string) (string, bool) {
 	return u.String(), true
 }
 
-// Rewrite applies RewriteOwner using the package defaults, and is inert until
-// the rename is marked complete.
-func Rewrite(raw string) (string, bool) {
-	if !Enabled() {
+// RewriteRepo moves an already-renamed repository segment. Always active; see
+// repoMoves.
+func RewriteRepo(raw string) (string, bool) {
+	if raw == "" {
 		return raw, false
 	}
-	return RewriteOwner(raw, OldOrg, NewOrg)
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return raw, false
+	}
+	if !rewritableHosts[strings.ToLower(u.Hostname())] {
+		return raw, false
+	}
+	segments := strings.Split(u.Path, "/")
+	// Path is "/owner/repo/..." so segments == ["", owner, repo, ...].
+	if len(segments) < 3 || segments[2] == "" {
+		return raw, false
+	}
+	moved, ok := repoMoves[segments[2]]
+	if !ok {
+		return raw, false
+	}
+	segments[2] = moved
+	u.Path = strings.Join(segments, "/")
+	return u.String(), true
+}
+
+// Rewrite applies both moves: the repository renames that have already
+// happened (always), and the owner move (only once the rename is marked
+// complete).
+func Rewrite(raw string) (string, bool) {
+	out, changed := RewriteRepo(raw)
+	if Enabled() {
+		if owned, ok := RewriteOwner(out, OldOrg, NewOrg); ok {
+			out, changed = owned, true
+		}
+	}
+	return out, changed
 }
 
 // Enabled reports whether persisted owners should be rewritten.

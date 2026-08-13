@@ -32,8 +32,8 @@ func Load() Config {
 		AllowHTTPRepoURLs: boolEnv("CATALOG_ALLOW_HTTP_REPO_URLS", false),
 		AllowFileRepoURLs: boolEnv("CATALOG_ALLOW_FILE_URLS", false),
 		RequestTimeout:    timeoutFromEnv(),
-		DefaultSourceURL:  envOrDefault("DEFAULT_SOURCE_URL", "https://raw.githubusercontent.com/imbue-openhost/openhost-apps/main/catalog.json"),
-		SubmitRepoURL:     strings.TrimRight(envOrDefault("CATALOG_SUBMIT_REPO_URL", "https://github.com/imbue-openhost/openhost-apps"), "/"),
+		DefaultSourceURL:  envOrDefault("DEFAULT_SOURCE_URL", "https://raw.githubusercontent.com/imbue-openhost/app-manifest/main/catalog.json"),
+		SubmitRepoURL:     strings.TrimRight(envOrDefault("CATALOG_SUBMIT_REPO_URL", "https://github.com/imbue-openhost/app-manifest"), "/"),
 	}
 }
 
