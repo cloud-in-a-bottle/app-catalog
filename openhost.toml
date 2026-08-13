@@ -1,7 +1,7 @@
 [app]
 name = "catalog"
 version = "0.2.0"
-description = "OpenHost app discovery and one-click deployment catalog"
+description = "Cloud in a Bottle app discovery and one-click deployment catalog"
 
 [runtime.container]
 image = "Dockerfile"

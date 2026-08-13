@@ -1,6 +1,6 @@
-# openhost-catalog
+# app-catalog
 
-Go + HTML template app for OpenHost app discovery and one-click publishing.
+Go + HTML template app for Cloud in a Bottle app discovery and one-click publishing.
 
 ## What it does
 
