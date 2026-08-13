@@ -14,10 +14,12 @@
 // claimed the old name serve this instance its app catalog, including the
 // repo_url values the installer acts on.
 //
-// NewOrg ships empty, which disables the rewrite completely. Rewriting before
-// the org is actually renamed would point instances at an owner that does not
-// exist, which is strictly worse than the redirect dependency it removes. Set
-// NewOrg only in the release that ships with (or after) the rename.
+// The owner name and the decision to act on it are separate constants: NewOrg
+// is settled data, OrgRenameComplete is the switch. While the switch is false
+// the rewrite is a total no-op. Rewriting before the org is actually renamed
+// would point instances at an owner that does not resolve, which is strictly
+// worse than the redirect dependency it removes. Flip OrgRenameComplete only in
+// the release that ships with (or after) the rename.
 package orgrename
 
 import (
@@ -28,9 +30,13 @@ import (
 // OldOrg is the owner every currently-deployed instance has persisted.
 const OldOrg = "imbue-openhost"
 
-// NewOrg is the owner to move to. Empty disables the rewrite. The name itself
-// is still pending sign-off.
-const NewOrg = ""
+// NewOrg is the owner to move to. Decided; the GitHub org has not been renamed
+// yet.
+const NewOrg = "cloud-in-a-bottle"
+
+// OrgRenameComplete gates the rewrite. False until the org has actually been
+// renamed; see the package comment.
+const OrgRenameComplete = false
 
 // rewritableHosts are the only hosts whose first path segment is a GitHub
 // owner. Matched by exact equality so a look-alike such as
@@ -76,10 +82,14 @@ func RewriteOwner(raw, oldOrg, newOrg string) (string, bool) {
 	return u.String(), true
 }
 
-// Rewrite applies RewriteOwner using the package defaults.
+// Rewrite applies RewriteOwner using the package defaults, and is inert until
+// the rename is marked complete.
 func Rewrite(raw string) (string, bool) {
+	if !Enabled() {
+		return raw, false
+	}
 	return RewriteOwner(raw, OldOrg, NewOrg)
 }
 
-// Enabled reports whether a new owner has been configured.
-func Enabled() bool { return NewOrg != "" }
+// Enabled reports whether persisted owners should be rewritten.
+func Enabled() bool { return OrgRenameComplete && NewOrg != "" && NewOrg != OldOrg }

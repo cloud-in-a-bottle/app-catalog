@@ -4,14 +4,15 @@ import "testing"
 
 const newOrg = "cloud-in-a-bottle"
 
-func TestShipsDisabled(t *testing.T) {
-	// Rewriting before the org is renamed would point instances at an owner
-	// that does not exist yet, so NewOrg must ship empty.
-	if NewOrg != "" {
-		t.Fatalf("NewOrg must ship empty; set it only with the rename, got %q", NewOrg)
+func TestShipsInertUntilTheRenameIsDone(t *testing.T) {
+	// NewOrg is settled data; acting on it is a separate switch. Rewriting
+	// before the org is renamed would point instances at an owner that does
+	// not resolve, so the switch must ship false.
+	if OrgRenameComplete {
+		t.Fatal("OrgRenameComplete must ship false; flip it only with the rename")
 	}
 	if Enabled() {
-		t.Fatal("Enabled() must be false while NewOrg is empty")
+		t.Fatal("Enabled() must be false while OrgRenameComplete is false")
 	}
 	feed := "https://raw.githubusercontent.com/" + OldOrg + "/openhost-apps/main/catalog.json"
 	if got, changed := Rewrite(feed); changed || got != feed {
