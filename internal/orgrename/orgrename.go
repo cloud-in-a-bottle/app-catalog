@@ -7,12 +7,20 @@
 // release does nothing for instances that already have a source row.
 //
 // After the GitHub org is renamed those stored URLs keep working, because
-// GitHub redirects a renamed owner. That redirect is a migration window, not a
-// destination: GitHub releases the old organization name for anyone to claim,
-// and per GitHub's documentation the new holder can create repositories that
-// override the redirect entries. A stale source URL would then let whoever
-// claimed the old name serve this instance its app catalog, including the
-// repo_url values the installer acts on.
+// GitHub redirects a renamed owner. GitHub also releases the old organization
+// name for anyone to claim, and per GitHub's documentation the new holder can
+// create repositories that override the redirect entries. A stale source URL
+// would then let whoever claimed the old name serve this instance its app
+// catalog, including the repo_url values the installer acts on.
+//
+// This reconcile does not fix that on its own. Updates are owner-initiated, so
+// an instance can sit on pre-rename code indefinitely and never run this code.
+// The redirect is what protects those instances, which means the old org name
+// must stay in our hands -- either by transferring repositories to a new org and
+// keeping the old one (Docker kept dotcloud, Elastic kept elasticsearch; both
+// still resolve), or by re-registering the freed name immediately after a
+// rename. Holding the name does not break redirects; only creating a colliding
+// repository does. This reconcile is hygiene for the instances that do update.
 //
 // The owner name and the decision to act on it are separate constants: NewOrg
 // is settled data, OrgRenameComplete is the switch. While the switch is false
