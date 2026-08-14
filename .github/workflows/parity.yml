@@ -17,7 +17,7 @@ jobs:
       - name: Check out app-manifest
         uses: actions/checkout@v4
         with:
-          repository: imbue-openhost/app-manifest
+          repository: cloud-in-a-bottle/app-manifest
           path: app-manifest
       - uses: actions/setup-go@v5
         with:

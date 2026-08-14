@@ -35,13 +35,13 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
       "name": "searxng",
       "title": "SearXNG",
       "description": "Privacy-respecting metasearch engine",
-      "repo_url": "https://github.com/imbue-openhost/openhost-searxng",
+      "repo_url": "https://github.com/cloud-in-a-bottle/bottled-searxng",
       "repo_ref": "",
       "icon_url": "",
       "tags": ["search", "privacy"],
       "categories": ["search"],
       "website_url": "https://docs.searxng.org",
-      "docs_url": "https://github.com/imbue-openhost/openhost-searxng#readme",
+      "docs_url": "https://github.com/cloud-in-a-bottle/bottled-searxng#readme",
       "openhost_integration_score": 5
     }
   ]
@@ -64,7 +64,7 @@ renders it as "—" / "Unrated"; it does not mean a score of zero. The catalog
 clamps the score to 1-5 on ingest.
 
 The canonical rubric and the checklist for assigning a score live in the feed
-repo: [app-manifest/SCORING.md](https://github.com/imbue-openhost/app-manifest/blob/main/SCORING.md).
+repo: [app-manifest/SCORING.md](https://github.com/cloud-in-a-bottle/app-manifest/blob/main/SCORING.md).
 
 ### How it's surfaced
 
@@ -82,7 +82,7 @@ repo: [app-manifest/SCORING.md](https://github.com/imbue-openhost/app-manifest/b
 - `OPENHOST_APP_TOKEN` (injected by OpenHost; used as the bearer when calling the installer service)
 - `OPENHOST_APP_NAME` (default `openhost-catalog`)
 - `OPENHOST_APP_BASE_PATH` (injected by OpenHost; used for path-based routing compatibility)
-- `DEFAULT_SOURCE_URL` (auto-seeded on first boot if no sources are configured; defaults to the official `imbue-openhost/app-manifest` catalog)
+- `DEFAULT_SOURCE_URL` (auto-seeded on first boot if no sources are configured; defaults to the official `cloud-in-a-bottle/app-manifest` catalog)
 - `CATALOG_ALLOW_HTTP_REPO_URLS` (default `false`)
 - `CATALOG_ALLOW_FILE_URLS` (default `false`)
 - `CATALOG_HTTP_TIMEOUT_SECONDS` (default `10`)
