@@ -205,8 +205,8 @@ func TestHostResolves(t *testing.T) {
 }
 
 func TestBuildForkURL(t *testing.T) {
-	got := buildForkURL("https://github.com/imbue-openhost/openhost-apps/")
-	if want := "https://github.com/imbue-openhost/openhost-apps/fork"; got != want {
+	got := buildForkURL("https://github.com/cloud-in-a-bottle/app-manifest/")
+	if want := "https://github.com/cloud-in-a-bottle/app-manifest/fork"; got != want {
 		t.Fatalf("fork url = %q, want %q", got, want)
 	}
 }
