@@ -15,6 +15,11 @@
     <a href="{{withBase .BasePath "/?advanced"}}"{{if .Advanced}} class="nav-active"{{end}}>ADVANCED SEARCH</a>
     <a href="{{withBase .BasePath "/submit"}}">LIST YOUR APP</a>
     <span class="spacer"></span>
+    {{if and (not .Advanced) (not .CategoryFilter)}}
+    <button class="nav-search" type="submit" form="landing-search-form" aria-label="Search" title="Search">
+      <img src="{{withBase .BasePath "/static/img/icons/search.svg"}}" alt="">
+    </button>
+    {{end}}
   </nav>
 
   {{if .FailedSyncNames}}
@@ -79,10 +84,9 @@
   {{else}}
 
   {{/* ── Landing: search + category grid ───────────────────────── */}}
-  <form method="get" action="{{withBase .BasePath "/"}}">
+  <form id="landing-search-form" method="get" action="{{withBase .BasePath "/"}}">
     <div class="landing-search">
-      <input type="text" name="q" value="{{.Query}}" placeholder="Search apps by name, category, or tag…" class="landing-search-input"{{if not .Query}} autofocus{{end}}>
-      <button type="submit" class="btn btn-primary">Search</button>
+      <input type="text" name="q" value="{{.Query}}" placeholder="Search by name, category, or tag…" class="landing-search-input"{{if not .Query}} autofocus{{end}}>
     </div>
   </form>
 
@@ -94,7 +98,6 @@
       <p style="color:#888;">No apps found for <strong>{{.Query}}</strong>.</p>
     {{end}}
   {{else}}
-  <h2>Browse by Category</h2>
   <div class="category-grid">
     {{range .AllCategories}}
     <a href="{{withBase $.BasePath (printf "/?category=%s" .)}}" class="cat-btn">
