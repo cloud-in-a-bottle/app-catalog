@@ -45,7 +45,8 @@ nav .spacer { flex: 1; }
 /* Landing search ---------------------------------------------------------- */
 
 .landing-search { display: flex; gap: 0.5em; margin: 1.2em 0 1.5em; }
-.landing-search-input { flex: 1; font-size: 1.1em; padding: 0.45em 0.75em; }
+.landing-search-input { flex: 1; font-size: 1.1em; padding: 0.45em 0.75em; border: 2px solid #6fbdf0; border-radius: 4px; background: #fff; box-shadow: 0 2px 5px rgba(0, 80, 140, 0.18); }
+.landing-search-input:focus { border-color: #3696d2; box-shadow: 0 2px 6px rgba(0, 80, 140, 0.28); outline: none; }
 
 /* Category landing -------------------------------------------------------- */
 
