@@ -5,6 +5,9 @@
   <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
+  {{template "decorative-background"}}
+
+  <main class="layout">
   <h1>OpenHost Catalog</h1>
   <nav>
     <a href="{{withBase .BasePath "/"}}" class="nav-active">Catalog</a>
@@ -58,5 +61,6 @@
   </div>
 
   <script src="{{withBase .BasePath "/static/publish.js"}}"></script>
+  </main>
 </body>
 </html>

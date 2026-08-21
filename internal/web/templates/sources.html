@@ -5,6 +5,9 @@
   <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
+  {{template "decorative-background"}}
+
+  <main class="layout">
   <h1>OpenHost Catalog</h1>
   <nav>
     <a href="{{withBase .BasePath "/"}}">Catalog</a>
@@ -64,5 +67,6 @@
   {{else}}
     <p style="color: #888;">No sources configured.</p>
   {{end}}
+  </main>
 </body>
 </html>

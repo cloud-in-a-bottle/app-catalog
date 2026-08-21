@@ -5,6 +5,9 @@
   <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
+  {{template "decorative-background"}}
+
+  <main class="layout">
   <h1>OpenHost Catalog</h1>
   <nav>
     <a href="{{withBase .BasePath "/"}}" class="nav-active">Catalog</a>
@@ -34,5 +37,6 @@
 
   <p style="color: #666; font-size: 0.9em;">Clicking Install opens the OpenHost installation page where you can review permissions before deploying.</p>
   <button type="button" class="btn-primary" data-install-url="{{.AddAppURL}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
+  </main>
 </body>
 </html>
