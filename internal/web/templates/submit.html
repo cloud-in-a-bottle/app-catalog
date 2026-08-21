@@ -8,7 +8,7 @@
   {{template "decorative-background"}}
 
   <main class="layout">
-  <h2 class="site-title">- - - - - - - - - - - - - - - - - - CLOUD IN A BOTTLE CATALOG - - - - - - - - - - - - - - - - - -</h2>
+  <h2 class="site-title">- - - - - - - - - - - - - - - - -   BOTTLE CATALOG   - - - - - - - - - - - - - - - - -</h2>
   <nav>
     <a href="{{withBase .BasePath "/"}}">CATALOG</a>
     <a href="{{withBase .BasePath "/sources"}}">SOURCES</a>
@@ -17,11 +17,8 @@
     <span class="spacer"></span>
   </nav>
 
-  <h2>List your app</h2>
-  <p style="color:#666;">Add your app to the catalog by opening a pull request against
-    <a href="{{.RepoURL}}" target="_blank" rel="noopener"><code>{{.RepoLabel}}</code></a>.
-    Fill in the details below to generate your catalog entry, then follow the steps to add it and open a pull request.
-    A maintainer reviews every submission before it appears in the catalog.</p>
+  <p style="color:#666;">Add your app to the catalog by opening a pull request to <a href="{{.RepoURL}}" target="_blank" rel="noopener"><code>{{.RepoLabel}}</code></a>.
+    Fill in the details, then follow the steps to add it and open a pull request. A maintainer reviews submissions before they appear in the catalog.</p>
 
   {{if .Errors}}
   <div class="error-list">
@@ -47,13 +44,12 @@
   {{end}}
 
   <form method="post" action="{{withBase .BasePath "/submit"}}" class="submit-form">
-    <label>App entry <span class="submit-hint">— edit the values below; this becomes <code>apps/&lt;name&gt;/app.toml</code></span>
+    <label>Edit details below</code></span>
       <textarea name="toml" rows="14" spellcheck="false" required>{{.TOMLInput}}</textarea></label>
     <dl class="field-docs">
       {{range .FieldDocs}}<dt><code>{{.Key}}</code></dt><dd>{{.Desc}}</dd>{{end}}
     </dl>
     <p class="submit-hint">Allowed categories: {{range $i, $c := .Categories}}{{if $i}}, {{end}}<code>{{$c}}</code>{{end}}.</p>
-    <p class="submit-hint" style="margin-top:0;">The OpenHost integration score is assigned by maintainers during review.</p>
     <button type="submit" class="btn btn-primary">Generate catalog entry</button>
   </form>
 
