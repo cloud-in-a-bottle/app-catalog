@@ -24,13 +24,13 @@ th, td { border: 1px solid #ddd; padding: 0.5em 0.8em; text-align: left; }
 th { background: #f5f5f5; }
 input[type="text"], input[type="password"], input[type="url"], select { padding: 0.4em; width: 100%; box-sizing: border-box; }
 button, input[type="submit"], .btn { padding: 0.4em 1em; cursor: pointer; border: 1px solid #ccc; background: #fff; text-decoration: none; color: #222; display: inline-block; }
-nav { display: flex; align-items: flex-end; border-bottom: 2px solid #ddd; margin: 0.5em 0 1.2em; gap: 0; }
-nav a { padding: 0.6em 1.5em; text-decoration: none; color: #555; border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; margin-bottom: -2px; font-size: 1.05em; white-space: nowrap; }
-nav a:hover { color: #222; background: #f0f0f0; }
-nav a.nav-active { color: #222; background: #fff; border-color: #ddd; font-weight: 600; }
+nav { display: flex; align-items: center; margin: 0.5em 0 1.2em; gap: 0; }
+nav a { padding: 0.6em 1.5em; text-decoration: none; color: #555; font-size: 1.05em; white-space: nowrap; }
+nav a:hover { color: #222; }
+nav a.nav-active { color: #222; font-weight: 600; }
 nav .spacer { flex: 1; }
-nav a.nav-dashboard { color: #36c; font-size: 0.95em; padding: 0.6em 0.8em; align-self: center; border: none; margin-bottom: 0; }
-nav a.nav-dashboard:hover { color: #36c; background: transparent; text-decoration: underline; }
+.dashboard-link { position: absolute; top: 1em; left: 1em; z-index: 2; color: #222; font-size: 0.95em; text-decoration: none; }
+.dashboard-link:hover { text-decoration: underline; }
 .error { color: #c00; }
 .status-running { color: #080; font-weight: bold; }
 .status-error { color: #c00; font-weight: bold; }
