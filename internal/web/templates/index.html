@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>OpenHost Catalog</title>
+  <title>Cloud in a Bottle Catalog</title>
   <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
   {{template "decorative-background"}}
 
   <main class="layout">
-  <h1>OpenHost Catalog</h1>
+  <h1 class="site-title">Cloud in a Bottle Catalog</h1>
   <nav>
     <a href="{{withBase .BasePath "/"}}"{{if not .Advanced}} class="nav-active"{{end}}>Catalog</a>
     <a href="{{withBase .BasePath "/sources"}}">Sources</a>

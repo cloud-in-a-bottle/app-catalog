@@ -2,6 +2,9 @@
 html { scrollbar-gutter: stable; -webkit-text-size-adjust: 100%; }
 body { font-family: -apple-system, system-ui, sans-serif; min-height: 100vh; margin: 0; padding: 0 1em 4em; color: #222; background: linear-gradient(180deg, #eef8ff 0%, #eef8ff 80%, #ecffe1 100%) fixed; }
 .layout { position: relative; z-index: 1; width: 100%; max-width: 960px; margin: 0 auto; padding-top: 2em; }
+.site-title { display: flex; align-items: center; gap: 1em; margin: 0 0 0.8em; text-align: center; font-size: 1.8em; }
+.site-title::before, .site-title::after { content: ""; flex: 1 1 auto; min-width: 1em; height: 2px; background: repeating-linear-gradient(to right, currentColor 0 9px, transparent 9px 15px); }
+.site-title::before { direction: rtl; }
 .deco-clouds, .deco-grass { pointer-events: none; user-select: none; z-index: 0; }
 .deco-clouds { position: absolute; top: 20px; left: 0; right: 0; height: clamp(230px, 56vh, 520px); overflow: hidden; }
 .cloud { position: absolute; left: var(--cloud-x); top: var(--cloud-y); width: var(--cloud-w); aspect-ratio: 2.671; background: url("img/deco/cloud.svg") no-repeat center / 100% 100%; opacity: var(--cloud-opacity); will-change: transform; }
@@ -16,7 +19,7 @@ body { font-family: -apple-system, system-ui, sans-serif; min-height: 100vh; mar
 .cloud--7 { --cloud-x: 73vw; --cloud-y: 68%; --cloud-w: clamp(54px, 6.8vw, 96px); --cloud-opacity: 0.5; --cloud-duration: 223s; --cloud-delay: -35s; }
 .cloud--8 { --cloud-x: 22vw; --cloud-y: 84%; --cloud-w: clamp(34px, 4vw, 58px); --cloud-opacity: 0.4; --cloud-duration: 97s; --cloud-delay: -71s; }
 .deco-grass { position: fixed; bottom: 0; left: 0; right: 0; height: 24px; background: url("img/deco/grass.svg") repeat-x bottom / auto 100%; }
-@media (max-width: 640px) { .layout { padding-top: 1.5em; } .cloud--4, .cloud--6, .cloud--8 { display: none; } }
+@media (max-width: 640px) { .layout { padding-top: 1.5em; } .site-title { gap: 0.6em; font-size: 1.35em; } .site-title::before, .site-title::after { min-width: 0.5em; } .cloud--4, .cloud--6, .cloud--8 { display: none; } }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 table { border-collapse: collapse; width: 100%; margin: 1em 0; }
 th, td { border: 1px solid #ddd; padding: 0.5em 0.8em; text-align: left; }
