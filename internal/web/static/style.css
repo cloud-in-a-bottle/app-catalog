@@ -4,6 +4,7 @@ body { font-family: -apple-system, system-ui, sans-serif; min-height: 100vh; mar
 .layout { position: relative; z-index: 1; width: 100%; max-width: 960px; margin: 0 auto; padding-top: 2em; }
 .site-title { display: flex; align-items: center; gap: 1em; margin: 0 0 0.8em; text-align: center; font-size: 1.8em; }
 .site-title::before, .site-title::after { content: ""; flex: 1 1 auto; min-width: 1em; height: 2px; background: repeating-linear-gradient(to right, currentColor 0 9px, transparent 9px 15px); }
+.site-title span { flex: 0 0 auto; }
 .site-title::before { direction: rtl; }
 .deco-clouds, .deco-grass { pointer-events: none; user-select: none; z-index: 0; }
 .deco-clouds { position: absolute; top: 20px; left: 0; right: 0; height: clamp(230px, 56vh, 520px); overflow: hidden; }
