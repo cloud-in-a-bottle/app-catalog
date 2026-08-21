@@ -3,9 +3,7 @@ table { border-collapse: collapse; width: 100%; margin: 1em 0; }
 th, td { border: 1px solid #ddd; padding: 0.5em 0.8em; text-align: left; }
 th { background: #f5f5f5; }
 input[type="text"], input[type="password"], input[type="url"], select { padding: 0.4em; width: 100%; box-sizing: border-box; }
-button, input[type="submit"], .btn { padding: 0.4em 1em; cursor: pointer; border: 1px solid #ccc; background: #f9f9f9; text-decoration: none; color: #222; display: inline-block; }
-.btn-danger { background: #fee; border-color: #c00; color: #c00; }
-.btn-primary { background: #e8f0fe; border-color: #36c; color: #36c; }
+button, input[type="submit"], .btn { padding: 0.4em 1em; cursor: pointer; border: 1px solid #ccc; background: #fff; text-decoration: none; color: #222; display: inline-block; }
 nav { display: flex; align-items: flex-end; border-bottom: 2px solid #ddd; margin: 0.5em 0 1.2em; gap: 0; }
 nav a { padding: 0.6em 1.5em; text-decoration: none; color: #555; border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; margin-bottom: -2px; font-size: 1.05em; white-space: nowrap; }
 nav a:hover { color: #222; background: #f0f0f0; }
@@ -40,43 +38,44 @@ nav a.nav-dashboard:hover { color: #36c; background: transparent; text-decoratio
 
 .cat-btn {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-start;
-  min-height: 110px;
-  padding: 1em 1em;
-  border-radius: 10px;
+  align-items: center;
+  gap: 0.7em;
+  min-height: 3.2em;
+  padding: 0.7em 0.9em;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
   text-align: left;
-  font-size: 1.35em;
+  font-size: 1.1em;
   font-weight: 600;
-  color: contrast-color(var(--cat-bg));
+  color: #222;
   text-decoration: none;
-  border: none;
   cursor: pointer;
-  transition: filter 0.15s, transform 0.1s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.cat-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+.cat-btn:hover { background: #f5f5f5; border-color: #999; }
+.cat-btn:focus-visible { outline: 2px solid #222; outline-offset: 2px; }
 
-.cat-icon { font-size: 2em; line-height: 1; align-self: center; }
+.cat-icon { font-size: 1.35em; line-height: 1; flex: 0 0 1.35em; text-align: center; }
 
 /* Category banner (selected category view) -------------------------------- */
 
 .cat-banner {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: 0.7em;
   width: 100%;
-  min-height: 140px;
-  padding: 1.2em 1.5em;
-  border-radius: 10px;
-  color: contrast-color(var(--cat-bg));
+  padding: 0.9em 1.1em;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+  color: #222;
   margin: 0.6em 0 1.2em;
   box-sizing: border-box;
 }
-.cat-banner .cat-icon { font-size: 3em; align-self: flex-end; }
-.cat-banner-label { font-size: 2em; font-weight: 700; line-height: 1.1; }
+.cat-banner .cat-icon { font-size: 1.5em; }
+.cat-banner-label { font-size: 1.35em; font-weight: 700; line-height: 1.1; }
 
 /* Category / advanced view header ---------------------------------------- */
 
@@ -99,17 +98,13 @@ nav a.nav-dashboard:hover { color: #36c; background: transparent; text-decoratio
 /* Tag chips --------------------------------------------------------------- */
 
 .tag-list { display: flex; flex-wrap: wrap; gap: 0.3em; }
-.tag-chip { display: inline-block; padding: 0.2em 0.65em; border-radius: 999px; background: #e8f0fe; color: #1e40af; font-size: 0.82em; white-space: nowrap; text-decoration: none; }
-.tag-chip:hover { background: #bfdbfe; }
-.tag-chip-active { background: #93c5fd; color: #1e3a8a; }
-.tag-chip-active:hover { background: #60a5fa; }
-.cat-chip { display: inline-block; padding: 0.2em 0.65em; border-radius: 999px; background: #dcfce7; color: #166534; font-size: 0.82em; white-space: nowrap; text-decoration: none; }
-.cat-chip:hover { background: #bbf7d0; }
-.cat-chip-active { background: #86efac; color: #14532d; }
-.cat-chip-active:hover { background: #4ade80; }
-.chip-highlight { background: #fef08a; color: #713f12; }
-.chip-highlight:hover { background: #fde047; }
-mark { background: #fef08a; color: inherit; padding: 0 0.1em; border-radius: 2px; }
+.tag-chip, .cat-chip { display: inline-block; padding: 0.2em 0.65em; border-radius: 999px; background: #fff; border: 1px solid #ccc; color: #222; font-size: 0.82em; white-space: nowrap; text-decoration: none; }
+.tag-chip:hover, .cat-chip:hover { background: #f5f5f5; border-color: #999; }
+.tag-chip-active, .cat-chip-active { background: #fff; border-color: #222; color: #222; }
+.tag-chip-active:hover, .cat-chip-active:hover { background: #f5f5f5; }
+.chip-highlight { background: #fff; border-color: #222; color: #222; }
+.chip-highlight:hover { background: #f5f5f5; }
+mark { background: #fff; border-bottom: 1px solid #222; color: inherit; padding: 0 0.1em; }
 
 /* Advanced search form ---------------------------------------------------- */
 
@@ -124,7 +119,7 @@ mark { background: #fef08a; color: inherit; padding: 0 0.1em; border-radius: 2px
 .app-actions { display: flex; gap: 0.5em; align-items: stretch; }
 .app-action-btn { width: 5.5em; text-align: center; box-sizing: border-box; font: inherit; line-height: 1.4; display: flex; align-items: center; justify-content: center; }
 
-.sync-warning { background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em; }
+.sync-warning { background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 0.6em 1em; margin-bottom: 1em; }
 
 /* List your app ----------------------------------------------------------- */
 
@@ -135,7 +130,7 @@ mark { background: #fef08a; color: inherit; padding: 0 0.1em; border-radius: 2px
 .field-docs { display: grid; grid-template-columns: max-content 1fr; gap: 0.25em 0.9em; margin: 0 0 1.2em; font-size: 0.9em; }
 .field-docs dt { font-weight: 600; }
 .field-docs dd { margin: 0; color: #555; }
-.result-panel { border: 1px solid #cde; background: #f5f9ff; border-radius: 6px; padding: 0.8em 1.2em; margin: 1.2em 0; }
+.result-panel { border: 1px solid #ccc; background: #fff; border-radius: 4px; padding: 0.8em 1.2em; margin: 1.2em 0; }
 .toml-block { position: relative; }
 .toml-preview { background: #1e1e1e; color: #d4d4d4; padding: 1em; font-size: 0.85em; overflow-x: auto; border-radius: 4px; font-family: monospace; white-space: pre; }
 .copy-btn { position: absolute; top: 0.5em; right: 0.5em; }

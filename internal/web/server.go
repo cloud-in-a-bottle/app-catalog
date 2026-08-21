@@ -114,8 +114,6 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 		"statusClass":  statusClass,
 		"stars":        renderStars,
 		"addAppURL":    buildAddAppURL,
-		"catGradient":  categoryGradient,
-		"catBaseColor": catBaseColor,
 		"highlight":    highlightText,
 		"matchesQuery": queryMatchesChip,
 		"catLabel":     categoryLabel,
@@ -1001,51 +999,6 @@ func queryMatchesChip(query, term string) bool {
 	tNorm := strings.ReplaceAll(t, "-", " ")
 	return strings.Contains(t, q) || strings.Contains(tNorm, q) ||
 		strings.Contains(q, t) || strings.Contains(q, tNorm)
-}
-
-// categoryBaseColors holds one primary color per category slug. The gradient
-// and contrast color are both derived from this via tintHex.
-var categoryBaseColors = map[string]string{
-	"all":             "#CFC7B3",
-	"advanced":        "#0B292B",
-	"tag":             "#8EAFCB",
-	"ai":              "#CECD0C",
-	"data-liberation": "#4B4C08",
-	"development":     "#000000",
-	"entertainment":   "#E4999A",
-	"monitoring":      "#FCEFD4",
-	"networking":      "#58defc",
-	"privacy":         "#492222",
-	"productivity":    "#F50D00",
-	"publishing":      "#45d266",
-	"search":          "#E9ECD9",
-	"utility":         "#7455d2",
-}
-
-// tintHex blends a #rrggbb color toward white by amount (0 = unchanged, 1 = white).
-func tintHex(hex string, amount float64) string {
-	var r, g, b int
-	fmt.Sscanf(hex[1:], "%02x%02x%02x", &r, &g, &b)
-	blend := func(c int) int { return c + int(float64(255-c)*amount) }
-	return fmt.Sprintf("#%02x%02x%02x", blend(r), blend(g), blend(b))
-}
-
-func categoryGradient(cat string) template.CSS {
-	base, ok := categoryBaseColors[cat]
-	if !ok {
-		base = "#4b5563"
-	}
-	return template.CSS("linear-gradient(to top right, " + base + ", " + tintHex(base, 0.5) + ")")
-}
-
-// catBaseColor returns the gradient midpoint (25% tint) as the representative
-// color for CSS contrast-color().
-func catBaseColor(cat string) template.CSS {
-	base, ok := categoryBaseColors[cat]
-	if !ok {
-		return "#666666"
-	}
-	return template.CSS(tintHex(base, 0.25))
 }
 
 func categoryIcon(cat string) string {
