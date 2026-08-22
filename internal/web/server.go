@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
-	"github.com/imbue-openhost/openhost-catalog/internal/config"
-	"github.com/imbue-openhost/openhost-catalog/internal/router"
-	"github.com/imbue-openhost/openhost-catalog/internal/store"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/catalog"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/config"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/router"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/store"
 )
 
 //go:embed templates/*.html static/*

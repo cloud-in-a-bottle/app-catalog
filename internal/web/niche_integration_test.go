@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/imbue-openhost/openhost-catalog/internal/store"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/store"
 )
 
 // Reuses helpers from manual_integration_test.go in the same package:

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
-	"github.com/imbue-openhost/openhost-catalog/internal/config"
-	"github.com/imbue-openhost/openhost-catalog/internal/store"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/catalog"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/config"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/store"
 )
 
 // feedServer serves a fixed JSON body at /catalog.json.

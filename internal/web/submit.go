@@ -10,7 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/catalog"
 )
 
 // submitTemplateTOML seeds the editor with a dummy entry. Required fields carry

@@ -1,4 +1,4 @@
-module github.com/imbue-openhost/openhost-catalog
+module github.com/cloud-in-a-bottle/app-catalog
 
 go 1.24.0
 

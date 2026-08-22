@@ -24,7 +24,7 @@ app_data = true
 # listed prefixes.  Limited to the official GitHub source feeds by
 # default; the owner can widen it from the dashboard permissions page.
 [[services.v2.consumes]]
-service = "github.com/imbue-openhost/openhost/services/installer"
+service = "github.com/cloud-in-a-bottle/cloud-in-a-bottle/services/installer"
 shortname = "installer"
 version = ">=0.1.0"
 grants = [
