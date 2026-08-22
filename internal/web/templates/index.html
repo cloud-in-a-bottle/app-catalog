@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
-  {{template "decorative-background"}}
+  {{template "decorative-background" .}}
 
   <main class="layout">
   <h2 class="site-title">- - - - - - - - - - - - - - - - -   BOTTLE CATALOG   - - - - - - - - - - - - - - - - -</h2>
@@ -75,7 +75,7 @@
   {{/* ── Category view ────────────────────────────────────────── */}}
   <a href="{{withBase .BasePath "/"}}" class="back-link">← Categories</a>
   <div class="cat-banner">
-    <span class="cat-icon" aria-hidden="true">{{if eq .CategoryFilter "all"}}📦{{else}}{{catIcon .CategoryFilter}}{{end}}</span>
+    {{if ne .CategoryFilter "all"}}<img class="cat-icon" src="{{catIconURL .BasePath .CategoryFilter}}" alt="">{{end}}
     <span class="cat-banner-label">{{if eq .CategoryFilter "all"}}All Apps{{else}}{{catLabel .CategoryFilter}}{{end}}</span>
   </div>
   {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
@@ -101,12 +101,10 @@
   <div class="category-grid">
     {{range .AllCategories}}
     <a href="{{withBase $.BasePath (printf "/?category=%s" .)}}" class="cat-btn">
-      <span class="cat-icon" aria-hidden="true">{{catIcon .}}</span><span>{{catLabel .}}</span>
+      <img class="cat-icon" src="{{catIconURL $.BasePath .}}" alt=""><span>{{catLabel .}}</span>
     </a>
     {{end}}
-    <a href="{{withBase .BasePath "/?category=all"}}" class="cat-btn">
-      <span class="cat-icon" aria-hidden="true">📦</span><span>All Apps</span>
-    </a>
+    <a class="all-apps-link" href="{{withBase .BasePath "/?category=all"}}">ALL APPS →</a>
   </div>
   {{end}}
 

@@ -117,7 +117,7 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 		"highlight":    highlightText,
 		"matchesQuery": queryMatchesChip,
 		"catLabel":     categoryLabel,
-		"catIcon":      categoryIcon,
+		"catIconURL":   categoryIconURL,
 		"tagClickURL":  tagClickURL,
 		"catChipURL":   catChipURL,
 		"isActiveTag":  isActiveTag,
@@ -1001,23 +1001,13 @@ func queryMatchesChip(query, term string) bool {
 		strings.Contains(q, t) || strings.Contains(q, tNorm)
 }
 
-func categoryIcon(cat string) string {
-	icons := map[string]string{
-		"ai":              "🤖",
-		"data-liberation": "🔓",
-		"development":     "💻",
-		"entertainment":   "🎮",
-		"networking":      "🌐",
-		"privacy":         "🔒",
-		"productivity":    "⚡",
-		"publishing":      "📝",
-		"search":          "🔍",
-		"utility":         "🔧",
+func categoryIconURL(basePath, cat string) string {
+	if cat != "all" {
+		if _, ok := catalog.AllowedCategories[cat]; !ok {
+			cat = "all"
+		}
 	}
-	if i, ok := icons[cat]; ok {
-		return i
-	}
-	return "📦"
+	return withBase(basePath, "/static/img/icons/"+url.PathEscape(cat)+".svg")
 }
 
 func categoryLabel(cat string) string {
