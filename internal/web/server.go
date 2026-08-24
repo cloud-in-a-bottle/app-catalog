@@ -113,7 +113,6 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 		"join":         strings.Join,
 		"lower":        strings.ToLower,
 		"statusClass":  statusClass,
-		"stars":        renderStars,
 		"addAppURL":    buildAddAppURL,
 		"highlight":    highlightText,
 		"matchesQuery": queryMatchesChip,
@@ -834,19 +833,6 @@ func (s *Server) renderError(w http.ResponseWriter, status int, message string, 
 		return
 	}
 	_, _ = io.WriteString(w, message)
-}
-
-// renderStars returns a 5-character string combining filled and
-// hollow stars. level is clamped into [0, 5]; level 0 renders as
-// all-hollow so the table column width is stable for unrated apps.
-func renderStars(level int) string {
-	if level < 0 {
-		level = 0
-	}
-	if level > 5 {
-		level = 5
-	}
-	return strings.Repeat("\u2605", level) + strings.Repeat("\u2606", 5-level)
 }
 
 func statusClass(status string) string {

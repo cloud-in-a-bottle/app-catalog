@@ -7,10 +7,9 @@ import (
 	"testing"
 )
 
-// TestIntegrationScoreRoundTrip verifies that the
-// openhost_integration_score column stores and reads back correctly,
-// and that apps without a score round-trip as zero.
-func TestIntegrationScoreRoundTrip(t *testing.T) {
+// TestCatalogAppRoundTrip verifies that a catalog app stores and reads
+// back correctly through the store.
+func TestCatalogAppRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	store, err := Open(filepath.Join(dir, "catalog.db"))
 	if err != nil {
@@ -37,46 +36,32 @@ func TestIntegrationScoreRoundTrip(t *testing.T) {
 
 	apps := []CatalogApp{
 		{
-			SourceID:                 "official",
-			AppID:                    "searxng",
-			Title:                    "SearXNG",
-			Description:              "Privacy-respecting metasearch",
-			RepoURL:                  "https://example.invalid/searxng",
-			OpenhostIntegrationScore: 5,
-		},
-		{
 			SourceID:    "official",
-			AppID:       "unrated",
-			Title:       "Unrated",
-			Description: "No integration score set",
-			RepoURL:     "https://example.invalid/unrated",
+			AppID:       "searxng",
+			Title:       "SearXNG",
+			Description: "Privacy-respecting metasearch",
+			RepoURL:     "https://example.invalid/searxng",
 		},
 	}
 	if err := store.ReplaceCatalogAppsForSource(ctx, "official", apps); err != nil {
 		t.Fatalf("replace apps: %v", err)
 	}
 
-	got5, err := store.GetCatalogApp(ctx, "official", "searxng")
+	got, err := store.GetCatalogApp(ctx, "official", "searxng")
 	if err != nil {
-		t.Fatalf("get rated app: %v", err)
+		t.Fatalf("get app: %v", err)
 	}
-	if got5.OpenhostIntegrationScore != 5 {
-		t.Errorf("rated app: got score %d, want 5", got5.OpenhostIntegrationScore)
+	if got.Title != "SearXNG" {
+		t.Errorf("title: got %q, want %q", got.Title, "SearXNG")
 	}
-
-	got0, err := store.GetCatalogApp(ctx, "official", "unrated")
-	if err != nil {
-		t.Fatalf("get unrated app: %v", err)
-	}
-	if got0.OpenhostIntegrationScore != 0 {
-		t.Errorf("unrated app: got score %d, want 0", got0.OpenhostIntegrationScore)
+	if got.RepoURL != "https://example.invalid/searxng" {
+		t.Errorf("repo_url: got %q", got.RepoURL)
 	}
 }
 
-// TestListCatalogAppsOrderedByScore confirms that ListCatalogApps
-// returns higher-rated apps first, with alphabetical title as the
-// tiebreaker and unrated apps at the bottom.
-func TestListCatalogAppsOrderedByScore(t *testing.T) {
+// TestListCatalogAppsOrderedByTitle confirms that ListCatalogApps
+// returns apps alphabetically by title, with app ID as the tiebreaker.
+func TestListCatalogAppsOrderedByTitle(t *testing.T) {
 	dir := t.TempDir()
 	store, err := Open(filepath.Join(dir, "catalog.db"))
 	if err != nil {
@@ -101,10 +86,10 @@ func TestListCatalogAppsOrderedByScore(t *testing.T) {
 	}
 
 	apps := []CatalogApp{
-		{SourceID: "s", AppID: "a1", Title: "A1", RepoURL: "https://example.invalid/a1", OpenhostIntegrationScore: 2},
-		{SourceID: "s", AppID: "a2", Title: "A2", RepoURL: "https://example.invalid/a2", OpenhostIntegrationScore: 5},
-		{SourceID: "s", AppID: "a3", Title: "A3", RepoURL: "https://example.invalid/a3", OpenhostIntegrationScore: 0},
-		{SourceID: "s", AppID: "a4", Title: "A4", RepoURL: "https://example.invalid/a4", OpenhostIntegrationScore: 5},
+		{SourceID: "s", AppID: "z-app", Title: "Zulu", RepoURL: "https://example.invalid/z"},
+		{SourceID: "s", AppID: "a-app", Title: "Alpha", RepoURL: "https://example.invalid/a"},
+		{SourceID: "s", AppID: "m2", Title: "Mike", RepoURL: "https://example.invalid/m2"},
+		{SourceID: "s", AppID: "m1", Title: "Mike", RepoURL: "https://example.invalid/m1"},
 	}
 	if err := store.ReplaceCatalogAppsForSource(ctx, "s", apps); err != nil {
 		t.Fatalf("replace apps: %v", err)
@@ -114,7 +99,9 @@ func TestListCatalogAppsOrderedByScore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	wantOrder := []string{"a2", "a4", "a1", "a3"}
+	// Alphabetical by title (Alpha, Mike, Zulu); the two "Mike" rows
+	// break the tie by app ID (m1 before m2).
+	wantOrder := []string{"a-app", "m1", "m2", "z-app"}
 	if len(got) != len(wantOrder) {
 		t.Fatalf("want %d apps, got %d", len(wantOrder), len(got))
 	}
@@ -131,7 +118,7 @@ func TestListCatalogAppsOrderedByScore(t *testing.T) {
 
 // TestIntegrationMigrationIdempotent checks that re-running Init
 // against an already-migrated database is a no-op rather than
-// erroring on the duplicate column ALTERs.
+// erroring on the duplicate/no-such column ALTERs.
 func TestIntegrationMigrationIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "catalog.db")
@@ -154,10 +141,12 @@ func TestIntegrationMigrationIdempotent(t *testing.T) {
 	}
 }
 
-// TestMigrationDropsExplanationColumn verifies that a database that already has
-// the removed openhost_integration_score_explanation column (from the prior
-// schema version) has it dropped when Init runs the current migration.
-func TestMigrationDropsExplanationColumn(t *testing.T) {
+// TestMigrationDropsLegacyScoreColumns verifies that a database carrying the
+// removed openhost_integration_score and openhost_integration_score_explanation
+// columns (from prior schema versions) has them dropped when Init runs the
+// current migration. Curation is now include/exclude at the feed level, so the
+// score columns no longer exist.
+func TestMigrationDropsLegacyScoreColumns(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "catalog.db")
 
@@ -170,17 +159,23 @@ func TestMigrationDropsExplanationColumn(t *testing.T) {
 	}
 	st.Close()
 
-	// Simulate the previously-merged schema by re-adding the column.
+	// Simulate previously-merged schema versions by re-adding the columns.
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("reopen raw: %v", err)
 	}
-	if _, err := db.Exec(`ALTER TABLE catalog_apps ADD COLUMN openhost_integration_score_explanation TEXT NOT NULL DEFAULT ''`); err != nil {
-		t.Fatalf("seed legacy column: %v", err)
+	legacy := []string{
+		`ALTER TABLE catalog_apps ADD COLUMN openhost_integration_score INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE catalog_apps ADD COLUMN openhost_integration_score_explanation TEXT NOT NULL DEFAULT ''`,
+	}
+	for _, stmt := range legacy {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("seed legacy column: %v", err)
+		}
 	}
 	db.Close()
 
-	// Re-running Init should drop the column.
+	// Re-running Init should drop both columns.
 	st2, err := Open(path)
 	if err != nil {
 		t.Fatalf("open 2: %v", err)
@@ -195,13 +190,15 @@ func TestMigrationDropsExplanationColumn(t *testing.T) {
 		t.Fatalf("verify open: %v", err)
 	}
 	defer db2.Close()
-	var n int
-	if err := db2.QueryRow(
-		`SELECT count(*) FROM pragma_table_info('catalog_apps') WHERE name='openhost_integration_score_explanation'`,
-	).Scan(&n); err != nil {
-		t.Fatalf("query columns: %v", err)
-	}
-	if n != 0 {
-		t.Fatalf("explanation column still present after migration (count=%d)", n)
+	for _, col := range []string{"openhost_integration_score", "openhost_integration_score_explanation"} {
+		var n int
+		if err := db2.QueryRow(
+			`SELECT count(*) FROM pragma_table_info('catalog_apps') WHERE name=?`, col,
+		).Scan(&n); err != nil {
+			t.Fatalf("query columns: %v", err)
+		}
+		if n != 0 {
+			t.Fatalf("column %q still present after migration (count=%d)", col, n)
+		}
 	}
 }

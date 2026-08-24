@@ -41,8 +41,7 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
       "tags": ["search", "privacy"],
       "categories": ["search"],
       "website_url": "https://docs.searxng.org",
-      "docs_url": "https://github.com/cloud-in-a-bottle/bottled-searxng#readme",
-      "openhost_integration_score": 5
+      "docs_url": "https://github.com/cloud-in-a-bottle/bottled-searxng#readme"
     }
   ]
 }
@@ -52,26 +51,11 @@ Required fields: `name`, `title`, `repo_url`. All others may be omitted.
 
 `name` must be lowercase alphanumeric with optional interior hyphens (matches OpenHost's app name format). It is the catalog's identifier for the app, the default name when deploying, and must be unique within a source.
 
-## Integration score
+## Curation
 
-Each app may carry an `openhost_integration_score` — an integer **1-5** rating
-how natively the app integrates with OpenHost (SSO quality, data/secret
-conventions, guest handling). It is **not** a rating of the upstream project's
-quality.
-
-The score is optional. The catalog treats a missing/`0` score as **unrated** and
-renders it as "—" / "Unrated"; it does not mean a score of zero. The catalog
-clamps the score to 1-5 on ingest.
-
-The canonical rubric and the checklist for assigning a score live in the feed
-repo: [app-manifest/SCORING.md](https://github.com/cloud-in-a-bottle/app-manifest/blob/main/SCORING.md).
-
-### How it's surfaced
-
-- **Catalog listing**: a star rating per app; hovering shows `N/5`. Higher-rated
-  apps sort first; unrated apps sort last.
-- **App detail page**: the star rating and `N/5`. The "OpenHost integration"
-  label links to the rubric.
+An app appears in the catalog if and only if the feed lists it. To remove an
+app, drop it from the source feed's manifest. Apps are ordered alphabetically
+by title.
 
 ## Runtime configuration
 
