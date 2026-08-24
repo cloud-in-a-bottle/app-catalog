@@ -135,6 +135,52 @@ repo_ref = "a b"`, "", "whitespace"},
 	}
 }
 
+// TestBuildListingEntryNormalizesRepoURL guards the invariant that the
+// generated entry always carries a canonical https://github.com/<owner>/<repo>
+// repo_url (the only form app-manifest CI accepts) regardless of how the user
+// pasted it, and that a /tree|/blob ref is lifted into repo_ref.
+func TestBuildListingEntryNormalizesRepoURL(t *testing.T) {
+	tests := []struct {
+		name        string
+		repoURL     string
+		repoRef     string
+		wantRepoURL string
+		wantRepoRef string // "" means the repo_ref line must be omitted
+	}{
+		{"tree ref lifted", "https://github.com/you/app/tree/main", "", "https://github.com/you/app", "main"},
+		{"blob ref lifted", "https://github.com/you/app/blob/dev", "", "https://github.com/you/app", "dev"},
+		{"explicit ref wins over url ref", "https://github.com/you/app/tree/main", "v2", "https://github.com/you/app", "v2"},
+		{"http upgraded to https", "http://github.com/you/app", "", "https://github.com/you/app", ""},
+		{"www stripped", "https://www.github.com/you/app", "", "https://github.com/you/app", ""},
+		{"dot-git stripped", "https://github.com/you/app.git", "", "https://github.com/you/app", ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			toml := "[app]\nname = \"app\"\ntitle = \"t\"\ndescription = \"d\"\nrepo_url = \"" + tc.repoURL + "\""
+			if tc.repoRef != "" {
+				toml += "\nrepo_ref = \"" + tc.repoRef + "\""
+			}
+			entry, errs := buildListingEntry(toml)
+			if len(errs) > 0 {
+				t.Fatalf("unexpected errors: %v", errs)
+			}
+			if entry.repoURL != tc.wantRepoURL {
+				t.Errorf("entry.repoURL = %q, want %q", entry.repoURL, tc.wantRepoURL)
+			}
+			if wantLine := "repo_url = \"" + tc.wantRepoURL + "\""; !strings.Contains(entry.toml, wantLine) {
+				t.Errorf("toml missing %q:\n%s", wantLine, entry.toml)
+			}
+			if tc.wantRepoRef == "" {
+				if strings.Contains(entry.toml, "repo_ref =") {
+					t.Errorf("expected no repo_ref line:\n%s", entry.toml)
+				}
+			} else if wantRef := "repo_ref = \"" + tc.wantRepoRef + "\""; !strings.Contains(entry.toml, wantRef) {
+				t.Errorf("toml missing %q:\n%s", wantRef, entry.toml)
+			}
+		})
+	}
+}
+
 func TestCandidateRefs(t *testing.T) {
 	tests := []struct {
 		repoRef, urlRef string
