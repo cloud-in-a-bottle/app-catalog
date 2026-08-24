@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  {{template "head-common" .}}
   <title>Cloud in a Bottle Catalog</title>
-  <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
   {{template "decorative-background" .}}
 
   <main class="layout">
-  <h2 class="site-title">- - - - - - - - - - - - - - - - -   BOTTLE CATALOG   - - - - - - - - - - - - - - - - -</h2>
+  {{template "site-banner" .}}
   <nav>
     <a href="{{withBase .BasePath "/"}}"{{if not .Advanced}} class="nav-active"{{end}}>CATALOG</a>
     <a href="{{withBase .BasePath "/sources"}}">SOURCES</a>
@@ -34,9 +34,9 @@
   <form method="get" action="{{withBase .BasePath "/"}}" class="adv-form">
     <input type="hidden" name="advanced" value="1">
     <input type="hidden" name="filter" value="1">
-    <label>Term<br><input type="text" name="q" value="{{.Query}}" placeholder="Name, id, or description" style="width:250px;"></label>
+    <label>Term<br><input type="text" name="q" value="{{.Query}}" placeholder="Name, id, or description"></label>
     <label>Source<br>
-      <select name="source" style="width:150px;">
+      <select name="source">
         <option value="">All</option>
         {{range .Sources}}
           <option value="{{.ID}}" {{if eq $.SourceFilter .ID}}selected{{end}}>{{.Name}}</option>
@@ -44,7 +44,7 @@
       </select>
     </label>
     <label>Category<br>
-      <select name="category" id="cat-select" style="width:160px;" onchange="toggleCustom('cat')">
+      <select name="category" id="cat-select" onchange="toggleCustom('cat')">
         <option value="">All</option>
         {{range .AllCategories}}
           <option value="{{.}}" {{if eq $.CategoryFilter .}}selected{{end}}>{{catLabel .}}</option>
@@ -56,9 +56,9 @@
              class="custom-expr{{if ne .CategoryFilter "custom"}} hidden{{end}}">
     </label>
     <label>Tags<br>
-      <input type="text" name="tag_expr" value="{{.TagExpr}}" placeholder="e.g. rss &#38;&#38; privacy" style="width:200px;">
+      <input type="text" name="tag_expr" value="{{.TagExpr}}" placeholder="e.g. rss &#38;&#38; privacy">
     </label>
-    <div class="adv-form-submit"><button type="submit">Search</button></div>
+    <div class="adv-form-submit"><button type="submit" class="btn btn--primary">Search</button></div>
   </form>
   <script>
   function toggleCustom(prefix) {
@@ -92,10 +92,10 @@
 
   {{if .Query}}
     {{if .Apps}}
-      <p style="color:#888;margin:0.5em 0 0.8em;">{{len .Apps}} result{{if ne (len .Apps) 1}}s{{end}} for <strong>{{.Query}}</strong></p>
+      <p class="muted">{{len .Apps}} result{{if ne (len .Apps) 1}}s{{end}} for <strong>{{.Query}}</strong></p>
       {{template "category-app-table" .}}
     {{else}}
-      <p style="color:#888;">No apps found for <strong>{{.Query}}</strong>.</p>
+      <p class="muted">No apps found for <strong>{{.Query}}</strong>.</p>
     {{end}}
   {{else}}
   <div class="category-grid">
@@ -139,7 +139,7 @@
     </td>
     <td>
       <div class="app-actions">
-        <button type="button" class="btn btn-primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
+        <button type="button" class="btn btn--primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
         <a class="btn app-action-btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
       </div>
     </td>
@@ -147,14 +147,14 @@
   {{end}}
 </table>
 {{else}}
-  <p style="color:#888;">No apps found.</p>
+  <p class="muted">No apps found.</p>
 {{end}}
 {{end}}
 
 {{/* ── Advanced search table: shows Categories and Tags ───── */}}
 {{define "advanced-app-table"}}
 {{if not .ShowApps}}
-  <p style="color:#888;">Enter a search term or select a filter to find apps.</p>
+  <p class="muted">Enter a search term or select a filter to find apps.</p>
 {{else if .Apps}}
 <table>
   <tr>
@@ -173,7 +173,7 @@
     <td>{{if .Tags}}<div class="tag-list">{{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}</div>{{else}}-{{end}}</td>
     <td>
       <div class="app-actions">
-        <button type="button" class="btn btn-primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
+        <button type="button" class="btn btn--primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
         <a class="btn app-action-btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
       </div>
     </td>
@@ -181,6 +181,6 @@
   {{end}}
 </table>
 {{else}}
-  <p style="color:#888;">No apps found.</p>
+  <p class="muted">No apps found.</p>
 {{end}}
 {{end}}

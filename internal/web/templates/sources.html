@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  {{template "head-common" .}}
   <title>Sources · Cloud in a Bottle Catalog</title>
-  <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
   {{template "decorative-background" .}}
 
   <main class="layout">
-  <h2 class="site-title">- - - - - - - - - - - - - - - - -   BOTTLE CATALOG   - - - - - - - - - - - - - - - - -</h2>
+  {{template "site-banner" .}}
   <nav>
     <a href="{{withBase .BasePath "/"}}">CATALOG</a>
     <a href="{{withBase .BasePath "/sources"}}">SOURCES</a>
@@ -17,18 +17,16 @@
     <span class="spacer"></span>
   </nav>
 
-  {{if .Message}}<p style="color: #080;">{{.Message}}</p>{{end}}
+  {{if .Message}}<p class="msg msg--ok">{{.Message}}</p>{{end}}
   {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 
-  <div style="margin-bottom: 1em;">
-    <form method="post" action="{{withBase .BasePath "/sources"}}">
-      <label>Source URL<br><input type="url" name="url" required placeholder="https://example.com/catalog.json" style="width: 400px; margin-bottom: 0.5em;"></label><br>
-      <label>Name (optional)<br><input type="text" name="name" placeholder="Official Catalog" style="width: 250px; margin-bottom: 0.5em;"></label><br>
-      <button type="submit" class="btn-primary">Add Source</button>
-    </form>
-  </div>
+  <form method="post" action="{{withBase .BasePath "/sources"}}">
+    <label class="field"><span>Source URL</span><input type="url" name="url" required placeholder="https://example.com/catalog.json"></label>
+    <label class="field"><span>Name (optional)</span><input type="text" name="name" placeholder="Official Catalog"></label>
+    <div class="actions"><button type="submit" class="btn btn--primary">Add Source</button></div>
+  </form>
 
-  <h2 style="margin-top: 2em;">Configured Sources</h2>
+  <h2>Configured Sources</h2>
   {{if .Sources}}
   <table>
     <tr>
@@ -41,16 +39,16 @@
     {{range .Sources}}
     <tr>
       <td>{{.Name}}</td>
-      <td style="font-family: monospace; word-break: break-word;">{{.URL}}</td>
+      <td class="wrap-any">{{.URL}}</td>
       <td>{{if .Enabled}}enabled{{else}}disabled{{end}}</td>
       <td>{{if .LastSyncAt}}{{.LastSyncAt}}{{else}}-{{end}}</td>
       <td>
-        <div style="display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap;">
+        <div class="app-actions">
           <form method="post" action="{{withBase $.BasePath (printf "/sources/%s/toggle" .ID)}}" style="display: inline;">
-            <button type="submit">{{if .Enabled}}Disable{{else}}Enable{{end}}</button>
+            <button type="submit" class="btn">{{if .Enabled}}Disable{{else}}Enable{{end}}</button>
           </form>
           <form method="post" action="{{withBase $.BasePath (printf "/sources/%s/delete" .ID)}}" style="display: inline;" onsubmit="return confirm('Delete source {{.Name}} and all synced entries?');">
-            <button type="submit" class="btn-danger">Delete</button>
+            <button type="submit" class="btn btn--danger">Delete</button>
           </form>
         </div>
       </td>
@@ -63,7 +61,7 @@
     {{end}}
   </table>
   {{else}}
-    <p style="color: #888;">No sources configured.</p>
+    <p class="muted">No sources configured.</p>
   {{end}}
   </main>
 </body>

@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  {{template "head-common" .}}
   <title>Publish {{.Publish.Title}} · Cloud in a Bottle Catalog</title>
-  <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
   {{template "decorative-background" .}}
 
   <main class="layout">
-  <h2 class="site-title">- - - - - - - - - - - - - - - - -   BOTTLE CATALOG   - - - - - - - - - - - - - - - - -</h2>
+  {{template "site-banner" .}}
   <nav>
     <a href="{{withBase .BasePath "/"}}" class="nav-active">CATALOG</a>
     <a href="{{withBase .BasePath "/sources"}}">SOURCES</a>
@@ -21,27 +21,27 @@
        data-logs-url="{{withBase .BasePath (printf "/publishes/%s/logs.txt" .Publish.ID)}}"
        data-terminal="{{if .Terminal}}1{{else}}0{{end}}">
 
-    <p><a href="{{withBase .BasePath "/"}}">&larr; Back to catalog</a></p>
+    <a class="back-link" href="{{withBase .BasePath "/"}}">&larr; Back to catalog</a>
     <h2>Publish: {{.Publish.Title}}</h2>
 
-    <table>
-      <tr><th>Publish ID</th><td style="font-family: monospace;">{{.Publish.ID}}</td></tr>
-      <tr><th>App name</th><td style="font-family: monospace;" id="router-app-name">{{.Publish.RouterAppName}}</td></tr>
-      <tr><th>Status</th><td><span id="publish-status" class="{{statusClass .Publish.Status}}">{{.Publish.Status}}</span></td></tr>
-      <tr><th>Repository</th><td style="font-family: monospace; word-break: break-word;">{{.Publish.RepoURL}}{{if .Publish.RepoRef}}@{{.Publish.RepoRef}}{{end}}</td></tr>
-      <tr><th>Requested at</th><td>{{.Publish.CreatedAt}}</td></tr>
+    <table class="kv-table">
+      <tr><th scope="row">Publish ID</th><td>{{.Publish.ID}}</td></tr>
+      <tr><th scope="row">App name</th><td id="router-app-name">{{.Publish.RouterAppName}}</td></tr>
+      <tr><th scope="row">Status</th><td><span id="publish-status" class="{{statusClass .Publish.Status}}">{{.Publish.Status}}</span></td></tr>
+      <tr><th scope="row">Repository</th><td class="wrap-any">{{.Publish.RepoURL}}{{if .Publish.RepoRef}}@{{.Publish.RepoRef}}{{end}}</td></tr>
+      <tr><th scope="row">Requested at</th><td>{{.Publish.CreatedAt}}</td></tr>
     </table>
 
     <p id="publish-error" class="error {{if not .Publish.ErrorMessage}}hidden{{end}}">{{.Publish.ErrorMessage}}</p>
 
-    <div id="grant-required" style="background: #fff8e1; border: 1px solid #f59e0b; border-radius: 4px; padding: 0.8em 1em; {{if ne .Publish.Status "permission_required"}}display: none;{{end}}">
+    <div id="grant-required" class="notice notice--warn" style="{{if ne .Publish.Status "permission_required"}}display: none;{{end}}">
       <p>This catalog does not yet have permission to install repos like this one.  The owner can grant it from the OpenHost permissions page.</p>
       {{if .Publish.GrantURL}}
         <p><a id="grant-url-link" href="{{.Publish.GrantURL}}">Approve installer permission</a></p>
       {{end}}
     </div>
 
-    <div id="router-links" style="margin-bottom: 1em; display: flex; gap: 0.5em; align-items: center;">
+    <div id="router-links" class="action-bar">
       {{if .RouterAppURL}}
         <a id="router-app-url" class="btn" href="{{.RouterAppURL}}" target="_blank" rel="noopener">Open app</a>
       {{else}}
@@ -55,7 +55,7 @@
       {{end}}
     </div>
 
-    <h2 style="margin-top: 2em;">Logs</h2>
+    <h2>Logs</h2>
     <pre id="publish-logs" class="logs">Waiting for logs...</pre>
   </div>
 

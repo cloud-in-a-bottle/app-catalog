@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  {{template "head-common" .}}
   <title>{{.App.Title}} · Cloud in a Bottle Catalog</title>
-  <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
 </head>
 <body>
   {{template "decorative-background" .}}
 
   <main class="layout">
-  <h2 class="site-title">- - - - - - - - - - - - - - - - -   BOTTLE CATALOG   - - - - - - - - - - - - - - - - -</h2>
+  {{template "site-banner" .}}
   <nav>
     <a href="{{withBase .BasePath "/"}}" class="nav-active">CATALOG</a>
     <a href="{{withBase .BasePath "/sources"}}">SOURCES</a>
@@ -17,25 +17,25 @@
     <span class="spacer"></span>
   </nav>
 
-  <p><a href="{{withBase .BasePath "/"}}">&larr; Back to catalog</a></p>
+  <a class="back-link" href="{{withBase .BasePath "/"}}">&larr; Back to catalog</a>
   <h2>{{.App.Title}}</h2>
-  <p style="color: #666;">{{.App.Description}}</p>
+  <p class="hint">{{.App.Description}}</p>
 
-  <table>
-    <tr><th>Catalog ID</th><td style="font-family: monospace;">{{.App.SourceID}}/{{.App.AppID}}</td></tr>
-    <tr><th>Source</th><td>{{.App.SourceName}}</td></tr>
-    <tr><th>Repository</th><td style="font-family: monospace; word-break: break-word;">{{.App.RepoURL}}{{if .App.RepoRef}}@{{.App.RepoRef}}{{end}}</td></tr>
-<tr><th>Tags</th><td>{{if .App.Tags}}{{join .App.Tags ", "}}{{else}}-{{end}}</td></tr>
-    <tr><th>Categories</th><td>{{if .App.Categories}}{{join .App.Categories ", "}}{{else}}-{{end}}</td></tr>
-    <tr><th>Website</th><td>{{if .App.WebsiteURL}}<a href="{{.App.WebsiteURL}}" target="_blank" rel="noopener">{{.App.WebsiteURL}}</a>{{else}}-{{end}}</td></tr>
-    <tr><th>Docs</th><td>{{if .App.DocsURL}}<a href="{{.App.DocsURL}}" target="_blank" rel="noopener">{{.App.DocsURL}}</a>{{else}}-{{end}}</td></tr>
+  <table class="kv-table">
+    <tr><th scope="row">Catalog ID</th><td>{{.App.SourceID}}/{{.App.AppID}}</td></tr>
+    <tr><th scope="row">Source</th><td>{{.App.SourceName}}</td></tr>
+    <tr><th scope="row">Repository</th><td class="wrap-any">{{.App.RepoURL}}{{if .App.RepoRef}}@{{.App.RepoRef}}{{end}}</td></tr>
+    <tr><th scope="row">Tags</th><td>{{if .App.Tags}}{{join .App.Tags ", "}}{{else}}-{{end}}</td></tr>
+    <tr><th scope="row">Categories</th><td>{{if .App.Categories}}{{join .App.Categories ", "}}{{else}}-{{end}}</td></tr>
+    <tr><th scope="row">Website</th><td>{{if .App.WebsiteURL}}<a href="{{.App.WebsiteURL}}" target="_blank" rel="noopener">{{.App.WebsiteURL}}</a>{{else}}-{{end}}</td></tr>
+    <tr><th scope="row">Docs</th><td>{{if .App.DocsURL}}<a href="{{.App.DocsURL}}" target="_blank" rel="noopener">{{.App.DocsURL}}</a>{{else}}-{{end}}</td></tr>
   </table>
 
-  <h2 style="margin-top: 2em;">Install</h2>
+  <h2>Install</h2>
   {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 
-  <p style="color: #666; font-size: 0.9em;">Clicking Install opens the OpenHost installation page where you can review permissions before deploying.</p>
-  <button type="button" class="btn-primary" data-install-url="{{.AddAppURL}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
+  <p class="hint">Clicking Install opens the OpenHost installation page where you can review permissions before deploying.</p>
+  <button type="button" class="btn btn--primary" data-install-url="{{.AddAppURL}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
   </main>
 </body>
 </html>
