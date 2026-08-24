@@ -111,6 +111,7 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 	tmpl, err := template.New("templates").Funcs(template.FuncMap{
 		"withBase":     withBase,
 		"join":         strings.Join,
+		"lower":        strings.ToLower,
 		"statusClass":  statusClass,
 		"stars":        renderStars,
 		"addAppURL":    buildAddAppURL,

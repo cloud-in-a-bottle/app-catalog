@@ -47,7 +47,7 @@
       <select name="category" id="cat-select" onchange="toggleCustom('cat')">
         <option value="">All</option>
         {{range .AllCategories}}
-          <option value="{{.}}" {{if eq $.CategoryFilter .}}selected{{end}}>{{catLabel .}}</option>
+          <option value="{{.}}" {{if eq $.CategoryFilter .}}selected{{end}}>{{lower (catLabel .)}}</option>
         {{end}}
         <option value="custom" {{if eq .CategoryFilter "custom"}}selected{{end}}>Custom expression…</option>
       </select>
@@ -132,7 +132,7 @@
     <td>
       {{if or .Categories .Tags}}
       <div class="tag-list">
-        {{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}
+        {{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{lower (catLabel .)}}</a>{{end}}
         {{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}
       </div>
       {{else}}-{{end}}
