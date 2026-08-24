@@ -57,6 +57,19 @@ An app appears in the catalog if and only if the feed lists it. To remove an
 app, drop it from the source feed's manifest. Apps are ordered alphabetically
 by title.
 
+## Submitting an app
+
+The `/submit` page ("List your app") helps contributors add an app to the feed.
+You fill in the app's details, the server validates them against the same rules
+the feed ingest enforces (app-name format, allowed categories, GitHub repo URL,
+and that the repo is public with an `openhost.toml` at its root), and it
+generates a canonical `apps/<name>/app.toml` entry.
+
+Submission is a pull request against the feed repo (`CATALOG_SUBMIT_REPO_URL`,
+the `cloud-in-a-bottle/app-manifest` repo by default): fork it, add the
+generated file, and open a PR. The repo's CI regenerates `catalog.json` and a
+maintainer reviews every submission before it appears in the catalog.
+
 ## Runtime configuration
 
 - `LISTEN_ADDR` (default `:8080`)
@@ -67,6 +80,7 @@ by title.
 - `OPENHOST_APP_NAME` (default `openhost-catalog`)
 - `OPENHOST_APP_BASE_PATH` (injected by OpenHost; used for path-based routing compatibility)
 - `DEFAULT_SOURCE_URL` (auto-seeded on first boot if no sources are configured; defaults to the official `cloud-in-a-bottle/app-manifest` catalog)
+- `CATALOG_SUBMIT_REPO_URL` (feed repo the "List your app" page points contributors at; defaults to `https://github.com/cloud-in-a-bottle/app-manifest`)
 - `CATALOG_ALLOW_HTTP_REPO_URLS` (default `false`)
 - `CATALOG_ALLOW_FILE_URLS` (default `false`)
 - `CATALOG_HTTP_TIMEOUT_SECONDS` (default `10`)

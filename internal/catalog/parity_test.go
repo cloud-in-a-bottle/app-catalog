@@ -9,17 +9,20 @@ import (
 )
 
 // TestFeedValidationParity guards against drift between this catalog's
-// validation and the openhost-apps generate.py that produces the feed. It
-// checks the app-name regex and the category set — the two rules that must
-// match exactly across the two repos, since a mismatch lets a submission pass
-// one side and fail the other.
+// validation and the app-manifest generate.py that produces the feed. It
+// checks the app-name regex and the category set: the two rules declared
+// plainly enough on both sides to compare across languages, where a mismatch
+// would let a submission pass one side and fail the other. The repo_url rule
+// is also shared, but the submit form rewrites URLs into the canonical form
+// app-manifest accepts (see buildListingEntry), so drift there can't produce a
+// divergent verdict and isn't compared here.
 //
-// Set OPENHOST_APPS_GENERATE_PY to the path of openhost-apps/generate.py to
-// run it; skipped otherwise so local and offline runs stay green.
+// Set APP_MANIFEST_GENERATE_PY to the path of app-manifest/generate.py to run
+// it; skipped otherwise so local and offline runs stay green.
 func TestFeedValidationParity(t *testing.T) {
-	path := os.Getenv("OPENHOST_APPS_GENERATE_PY")
+	path := os.Getenv("APP_MANIFEST_GENERATE_PY")
 	if path == "" {
-		t.Skip("OPENHOST_APPS_GENERATE_PY not set; skipping cross-repo parity check")
+		t.Skip("APP_MANIFEST_GENERATE_PY not set; skipping cross-repo parity check")
 	}
 	src, err := os.ReadFile(path)
 	if err != nil {
