@@ -151,36 +151,11 @@
 {{end}}
 {{end}}
 
-{{/* ── Advanced search table: shows Categories and Tags ───── */}}
+{{/* ── Advanced search table: shared table plus empty-search hint ── */}}
 {{define "advanced-app-table"}}
 {{if not .ShowApps}}
   <p class="muted">Enter a search term or select a filter to find apps.</p>
-{{else if .Apps}}
-<table>
-  <tr>
-    <th>App</th>
-    <th>Categories</th>
-    <th>Tags</th>
-    <th>Actions</th>
-  </tr>
-  {{range .Apps}}
-  <tr>
-    <td>
-      <div class="app-title">{{highlight .Title $.Query}}</div>
-      <div class="app-desc">{{highlight .Description $.Query}}</div>
-    </td>
-    <td>{{if .Categories}}<div class="tag-list">{{range .Categories}}<a class="cat-chip{{if isActiveCat $.CategoryFilter $.CategoryExpr .}} cat-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{catChipURL $.BasePath $.CategoryFilter $.CategoryExpr . $.TagExpr}}">{{catLabel .}}</a>{{end}}</div>{{else}}-{{end}}</td>
-    <td>{{if .Tags}}<div class="tag-list">{{range .Tags}}<a class="tag-chip{{if isActiveTag $.TagExpr .}} tag-chip-active{{end}}{{if matchesQuery $.Query .}} chip-highlight{{end}}" href="{{tagClickURL $.BasePath $.TagExpr . $.CategoryFilter $.CategoryExpr}}">{{.}}</a>{{end}}</div>{{else}}-{{end}}</td>
-    <td>
-      <div class="app-actions">
-        <button type="button" class="btn btn--primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
-        {{template "button" (dict "Label" "Details" "Href" (withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)) "Class" "app-action-btn")}}
-      </div>
-    </td>
-  </tr>
-  {{end}}
-</table>
 {{else}}
-  <p class="muted">No apps found.</p>
+  {{template "category-app-table" .}}
 {{end}}
 {{end}}
