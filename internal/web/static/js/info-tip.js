@@ -1,3 +1,5 @@
+// Copied verbatim from the main repo (compute_space/web/static/js/info-tip.js).
+// Do not edit here; change it in cloud-in-a-bottle and re-copy.
 // Click/keyboard half of the info-tip component (hover is pure CSS). Delegated
 // from the document, so tips rendered after load work without re-binding.
 
