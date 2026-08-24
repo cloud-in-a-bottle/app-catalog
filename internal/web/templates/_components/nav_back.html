@@ -1,0 +1,5 @@
+{{/* The way home, in the page's top-left corner. Lives outside the content
+     column so it reads as leaving the page, not one more tool on the nav row. */}}
+{{define "nav-back"}}
+<a class="nav-back" href="{{.Href}}">{{template "icon" (dict "BasePath" .BasePath "Name" "arrow-left" "Size" 10 "Height" 7)}}Dashboard</a>
+{{end}}

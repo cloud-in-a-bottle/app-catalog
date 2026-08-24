@@ -50,7 +50,7 @@
       {{range .FieldDocs}}<dt><code>{{.Key}}</code></dt><dd>{{.Desc}}</dd>{{end}}
     </dl>
     <p class="submit-hint">Allowed categories: {{range $i, $c := .Categories}}{{if $i}}, {{end}}<code>{{$c}}</code>{{end}}.</p>
-    <button type="submit" class="btn btn--primary">Generate catalog entry</button>
+    {{template "button" (dict "Label" "Generate catalog entry" "Type" "submit" "Variant" "primary")}}
   </form>
 
   <script>

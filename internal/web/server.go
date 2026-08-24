@@ -28,7 +28,7 @@ import (
 	"github.com/cloud-in-a-bottle/app-catalog/internal/store"
 )
 
-//go:embed templates/*.html static/*
+//go:embed templates/*.html templates/_components/*.html static/*
 var assets embed.FS
 
 var appNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
@@ -122,7 +122,9 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 		"catChipURL":   catChipURL,
 		"isActiveTag":  isActiveTag,
 		"isActiveCat":  isActiveCat,
-	}).ParseFS(assets, "templates/*.html")
+		"dict":         templateDict,
+		"jsExpr":       templateJSExpr,
+	}).ParseFS(assets, "templates/*.html", "templates/_components/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
@@ -883,6 +885,29 @@ func buildAddAppURL(routerBaseURL, repoURL, repoRef, appID string) string {
 	q.Set("repo", repo)
 	q.Set("name", appID)
 	return routerBaseURL + "/add_app?" + q.Encode()
+}
+
+// templateDict builds a map from alternating key/value args, so templates can
+// pass named arguments to component defines.
+func templateDict(values ...any) (map[string]any, error) {
+	if len(values)%2 != 0 {
+		return nil, fmt.Errorf("dict: odd number of arguments")
+	}
+	m := make(map[string]any, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict: key %v is not a string", values[i])
+		}
+		m[key] = values[i+1]
+	}
+	return m, nil
+}
+
+// templateJSExpr marks template-authored JS as safe so the button component
+// can emit onclick handlers; never call it with user-supplied input.
+func templateJSExpr(s string) template.JS {
+	return template.JS(s)
 }
 
 func withBase(basePath string, path string) string {

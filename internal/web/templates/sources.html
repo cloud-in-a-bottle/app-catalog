@@ -23,10 +23,10 @@
   <form method="post" action="{{withBase .BasePath "/sources"}}">
     <label class="field"><span>Source URL</span><input type="url" name="url" required placeholder="https://example.com/catalog.json"></label>
     <label class="field"><span>Name (optional)</span><input type="text" name="name" placeholder="Official Catalog"></label>
-    <div class="actions"><button type="submit" class="btn btn--primary">Add Source</button></div>
+    <div class="actions">{{template "button" (dict "Label" "Add Source" "Type" "submit" "Variant" "primary")}}</div>
   </form>
 
-  <h2>Configured Sources</h2>
+  <h2 class="section-title">Configured Sources</h2>
   {{if .Sources}}
   <table>
     <tr>
@@ -45,10 +45,11 @@
       <td>
         <div class="app-actions">
           <form method="post" action="{{withBase $.BasePath (printf "/sources/%s/toggle" .ID)}}" style="display: inline;">
-            <button type="submit" class="btn">{{if .Enabled}}Disable{{else}}Enable{{end}}</button>
+            {{$toggleLabel := "Enable"}}{{if .Enabled}}{{$toggleLabel = "Disable"}}{{end}}
+            {{template "button" (dict "Label" $toggleLabel "Type" "submit")}}
           </form>
           <form method="post" action="{{withBase $.BasePath (printf "/sources/%s/delete" .ID)}}" style="display: inline;" onsubmit="return confirm('Delete source {{.Name}} and all synced entries?');">
-            <button type="submit" class="btn btn--danger">Delete</button>
+            {{template "button" (dict "Label" "Delete" "Type" "submit" "Variant" "danger")}}
           </form>
         </div>
       </td>

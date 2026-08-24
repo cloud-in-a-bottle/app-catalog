@@ -58,7 +58,7 @@
     <label>Tags<br>
       <input type="text" name="tag_expr" value="{{.TagExpr}}" placeholder="e.g. rss &#38;&#38; privacy">
     </label>
-    <div class="adv-form-submit"><button type="submit" class="btn btn--primary">Search</button></div>
+    <div class="adv-form-submit">{{template "button" (dict "Label" "Search" "Type" "submit" "Variant" "primary")}}</div>
   </form>
   <script>
   function toggleCustom(prefix) {
@@ -140,7 +140,7 @@
     <td>
       <div class="app-actions">
         <button type="button" class="btn btn--primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
-        <a class="btn app-action-btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
+        {{template "button" (dict "Label" "Details" "Href" (withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)) "Class" "app-action-btn")}}
       </div>
     </td>
   </tr>
@@ -174,7 +174,7 @@
     <td>
       <div class="app-actions">
         <button type="button" class="btn btn--primary app-action-btn" data-install-url="{{addAppURL $.RouterBaseURL .RepoURL .RepoRef .AppID}}" onclick="window.open(this.dataset.installUrl,'_blank','noopener')">Install</button>
-        <a class="btn app-action-btn" href="{{withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)}}">Details</a>
+        {{template "button" (dict "Label" "Details" "Href" (withBase $.BasePath (printf "/apps/%s/%s" .SourceID .AppID)) "Class" "app-action-btn")}}
       </div>
     </td>
   </tr>

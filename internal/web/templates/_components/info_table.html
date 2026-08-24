@@ -1,0 +1,11 @@
+{{/* One row of a key/value info table. Go templates lack Jinja's call blocks,
+     so pages write the table skeleton and fill the tbody with these rows:
+
+     <table class="info-table">
+       <thead><tr><th>Property</th><th>Value</th></tr></thead>
+       <tbody>{{template "info-row" (dict "Label" "..." "Value" "...")}}</tbody>
+     </table>
+
+     Rows whose value needs markup (links, live ids) are written as raw <tr>s
+     with the same shape: <tr><th scope="row">...</th><td>...</td></tr>. */}}
+{{define "info-row"}}<tr><th scope="row">{{.Label}}</th><td{{with .Class}} class="{{.}}"{{end}}>{{.Value}}</td></tr>{{end}}

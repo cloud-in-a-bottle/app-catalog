@@ -22,14 +22,17 @@
        data-terminal="{{if .Terminal}}1{{else}}0{{end}}">
 
     <a class="back-link" href="{{withBase .BasePath "/"}}">&larr; Back to catalog</a>
-    <h2>Publish: {{.Publish.Title}}</h2>
+    <h2 class="section-title">Publish: {{.Publish.Title}}</h2>
 
-    <table class="kv-table">
-      <tr><th scope="row">Publish ID</th><td>{{.Publish.ID}}</td></tr>
-      <tr><th scope="row">App name</th><td id="router-app-name">{{.Publish.RouterAppName}}</td></tr>
-      <tr><th scope="row">Status</th><td><span id="publish-status" class="{{statusClass .Publish.Status}}">{{.Publish.Status}}</span></td></tr>
-      <tr><th scope="row">Repository</th><td class="wrap-any">{{.Publish.RepoURL}}{{if .Publish.RepoRef}}@{{.Publish.RepoRef}}{{end}}</td></tr>
-      <tr><th scope="row">Requested at</th><td>{{.Publish.CreatedAt}}</td></tr>
+    <table class="info-table">
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        {{template "info-row" (dict "Label" "Publish ID" "Value" .Publish.ID)}}
+        <tr><th scope="row">App name</th><td id="router-app-name">{{.Publish.RouterAppName}}</td></tr>
+        <tr><th scope="row">Status</th><td><span id="publish-status" class="{{statusClass .Publish.Status}}">{{.Publish.Status}}</span></td></tr>
+        <tr><th scope="row">Repository</th><td class="wrap-any">{{.Publish.RepoURL}}{{if .Publish.RepoRef}}@{{.Publish.RepoRef}}{{end}}</td></tr>
+        {{template "info-row" (dict "Label" "Requested at" "Value" .Publish.CreatedAt)}}
+      </tbody>
     </table>
 
     <p id="publish-error" class="error {{if not .Publish.ErrorMessage}}hidden{{end}}">{{.Publish.ErrorMessage}}</p>
@@ -43,19 +46,19 @@
 
     <div id="router-links" class="action-bar">
       {{if .RouterAppURL}}
-        <a id="router-app-url" class="btn" href="{{.RouterAppURL}}" target="_blank" rel="noopener">Open app</a>
+        {{template "button" (dict "Label" "Open app" "Href" .RouterAppURL "ID" "router-app-url" "NewTab" true)}}
       {{else}}
-        <a id="router-app-url" class="btn hidden" href="#" target="_blank" rel="noopener">Open app</a>
+        {{template "button" (dict "Label" "Open app" "Href" "#" "ID" "router-app-url" "NewTab" true "Class" "hidden")}}
       {{end}}
 
       {{if .RouterPage}}
-        <a id="router-page-url" class="btn" href="{{.RouterPage}}" target="_blank" rel="noopener">Open OpenHost app page</a>
+        {{template "button" (dict "Label" "Open OpenHost app page" "Href" .RouterPage "ID" "router-page-url" "NewTab" true)}}
       {{else}}
-        <a id="router-page-url" class="btn hidden" href="#" target="_blank" rel="noopener">Open OpenHost app page</a>
+        {{template "button" (dict "Label" "Open OpenHost app page" "Href" "#" "ID" "router-page-url" "NewTab" true "Class" "hidden")}}
       {{end}}
     </div>
 
-    <h2>Logs</h2>
+    <h2 class="section-title">Logs</h2>
     <pre id="publish-logs" class="logs">Waiting for logs...</pre>
   </div>
 

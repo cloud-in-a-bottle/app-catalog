@@ -1,0 +1,5 @@
+{{/* Height is for icons whose artwork isn't square (the back arrow): Size
+     alone would letterbox them and land their pixel grid on half pixels. */}}
+{{define "icon" -}}
+<img class="icon{{with .Class}} {{.}}{{end}}" src="{{withBase .BasePath (printf "/static/img/icons/%s.svg" .Name)}}" width="{{.Size}}" height="{{with .Height}}{{.}}{{else}}{{.Size}}{{end}}" alt="{{with .Alt}}{{.}}{{end}}"{{if not .Alt}} aria-hidden="true"{{end}}>
+{{- end}}

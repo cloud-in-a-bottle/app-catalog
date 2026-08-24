@@ -90,23 +90,6 @@ nav .spacer {
   min-height: 180px;
 }
 
-/* Key/value tables (app detail, publish). Row labels read as labels, not as
-   column headers, so they drop the uppercase tracked header treatment. */
-.kv-table th[scope="row"] {
-  width: 12em;
-  background: transparent;
-  color: var(--color-text-subtle);
-  font-weight: var(--weight-semibold);
-  letter-spacing: normal;
-  text-transform: none;
-  white-space: normal;
-  opacity: 1;
-}
-
-.kv-table td {
-  overflow-wrap: anywhere;
-}
-
 .sync-warning {
   padding: var(--space-3) var(--space-4);
   margin: var(--space-3) 0;
