@@ -1,0 +1,17 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/app_row.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{/* One row of an app list. data-status drives the dot colour; URL and
+     DetailsURL are passed in since this repo has no app_url helper. */}}
+{{define "app-row"}}
+<div class="app-row" data-app-id="{{.AppID}}" data-status="{{.Status}}" data-app-name="{{.Name}}">
+  <div class="app-row__main">
+    <a class="app-row__name" href="{{.URL}}" target="_blank" rel="noopener">{{.Name}}</a>
+    {{- if and .ManifestName (ne .ManifestName .Name)}}
+    <span class="app-row__alias">({{.ManifestName}})</span>
+    {{- end}}
+    <span class="status-dot"></span>
+    <span class="visually-hidden app-row__status">{{.Status}}</span>
+  </div>
+  <a class="app-row__details" href="{{.DetailsURL}}">Details</a>
+</div>
+{{end}}

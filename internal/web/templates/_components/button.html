@@ -1,0 +1,11 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/button.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{/* Renders an <a> when Href is given, a <button> otherwise. Variants:
+     default | primary | accent | danger. Class appends extra classes. */}}
+{{define "button"}}
+{{- if .Href -}}
+<a class="btn{{with .Variant}} btn--{{.}}{{end}}{{if .Block}} btn--block{{end}}{{with .Class}} {{.}}{{end}}" href="{{.Href}}"{{with .ID}} id="{{.}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener"{{end}}{{with .Onclick}} onclick="{{jsExpr .}}"{{end}}>{{.Label}}</a>
+{{- else -}}
+<button class="btn{{with .Variant}} btn--{{.}}{{end}}{{if .Block}} btn--block{{end}}{{with .Class}} {{.}}{{end}}" type="{{with .Type}}{{.}}{{else}}button{{end}}"{{with .ID}} id="{{.}}"{{end}}{{if .Disabled}} disabled{{end}}{{with .Onclick}} onclick="{{jsExpr .}}"{{end}}>{{.Label}}</button>
+{{- end -}}
+{{end}}

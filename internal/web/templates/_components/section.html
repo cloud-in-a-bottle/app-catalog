@@ -1,0 +1,13 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/section.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{/* Section label; a real heading so the page keeps a navigable outline.
+     Go templates lack Jinja's call blocks, so action clusters are written inline. */}}
+{{define "section-head"}}
+<div class="section-head">
+  {{- if eq (or .Level 2) 3}}
+  <h3 class="section-label">{{.Label}}</h3>
+  {{- else}}
+  <h2 class="section-label">{{.Label}}</h2>
+  {{- end}}
+</div>
+{{end}}

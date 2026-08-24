@@ -22,13 +22,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/imbue-openhost/openhost-catalog/internal/catalog"
-	"github.com/imbue-openhost/openhost-catalog/internal/config"
-	"github.com/imbue-openhost/openhost-catalog/internal/router"
-	"github.com/imbue-openhost/openhost-catalog/internal/store"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/catalog"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/config"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/router"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/store"
 )
 
-//go:embed templates/*.html static/*
+//go:embed templates/*.html templates/_components/*.html static/*
 var assets embed.FS
 
 var appNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
@@ -111,20 +111,21 @@ func NewServer(cfg config.Config, st *store.Store) (*Server, error) {
 	tmpl, err := template.New("templates").Funcs(template.FuncMap{
 		"withBase":     withBase,
 		"join":         strings.Join,
+		"lower":        strings.ToLower,
 		"statusClass":  statusClass,
 		"stars":        renderStars,
 		"addAppURL":    buildAddAppURL,
-		"catGradient":  categoryGradient,
-		"catBaseColor": catBaseColor,
 		"highlight":    highlightText,
 		"matchesQuery": queryMatchesChip,
 		"catLabel":     categoryLabel,
-		"catIcon":      categoryIcon,
+		"catIconURL":   categoryIconURL,
 		"tagClickURL":  tagClickURL,
 		"catChipURL":   catChipURL,
 		"isActiveTag":  isActiveTag,
 		"isActiveCat":  isActiveCat,
-	}).ParseFS(assets, "templates/*.html")
+		"dict":         templateDict,
+		"jsExpr":       templateJSExpr,
+	}).ParseFS(assets, "templates/*.html", "templates/_components/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
@@ -887,6 +888,29 @@ func buildAddAppURL(routerBaseURL, repoURL, repoRef, appID string) string {
 	return routerBaseURL + "/add_app?" + q.Encode()
 }
 
+// templateDict builds a map from alternating key/value args, so templates can
+// pass named arguments to component defines.
+func templateDict(values ...any) (map[string]any, error) {
+	if len(values)%2 != 0 {
+		return nil, fmt.Errorf("dict: odd number of arguments")
+	}
+	m := make(map[string]any, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict: key %v is not a string", values[i])
+		}
+		m[key] = values[i+1]
+	}
+	return m, nil
+}
+
+// templateJSExpr marks template-authored JS as safe so the button component
+// can emit onclick handlers; never call it with user-supplied input.
+func templateJSExpr(s string) template.JS {
+	return template.JS(s)
+}
+
 func withBase(basePath string, path string) string {
 	basePath = strings.TrimSpace(basePath)
 	if basePath == "" || basePath == "/" {
@@ -1003,68 +1027,13 @@ func queryMatchesChip(query, term string) bool {
 		strings.Contains(q, t) || strings.Contains(q, tNorm)
 }
 
-// categoryBaseColors holds one primary color per category slug. The gradient
-// and contrast color are both derived from this via tintHex.
-var categoryBaseColors = map[string]string{
-	"all":             "#CFC7B3",
-	"advanced":        "#0B292B",
-	"tag":             "#8EAFCB",
-	"ai":              "#CECD0C",
-	"data-liberation": "#4B4C08",
-	"development":     "#000000",
-	"entertainment":   "#E4999A",
-	"monitoring":      "#FCEFD4",
-	"networking":      "#58defc",
-	"privacy":         "#492222",
-	"productivity":    "#F50D00",
-	"publishing":      "#45d266",
-	"search":          "#E9ECD9",
-	"utility":         "#7455d2",
-}
-
-// tintHex blends a #rrggbb color toward white by amount (0 = unchanged, 1 = white).
-func tintHex(hex string, amount float64) string {
-	var r, g, b int
-	fmt.Sscanf(hex[1:], "%02x%02x%02x", &r, &g, &b)
-	blend := func(c int) int { return c + int(float64(255-c)*amount) }
-	return fmt.Sprintf("#%02x%02x%02x", blend(r), blend(g), blend(b))
-}
-
-func categoryGradient(cat string) template.CSS {
-	base, ok := categoryBaseColors[cat]
-	if !ok {
-		base = "#4b5563"
+func categoryIconURL(basePath, cat string) string {
+	if cat != "all" {
+		if _, ok := catalog.AllowedCategories[cat]; !ok {
+			cat = "all"
+		}
 	}
-	return template.CSS("linear-gradient(to top right, " + base + ", " + tintHex(base, 0.5) + ")")
-}
-
-// catBaseColor returns the gradient midpoint (25% tint) as the representative
-// color for CSS contrast-color().
-func catBaseColor(cat string) template.CSS {
-	base, ok := categoryBaseColors[cat]
-	if !ok {
-		return "#666666"
-	}
-	return template.CSS(tintHex(base, 0.25))
-}
-
-func categoryIcon(cat string) string {
-	icons := map[string]string{
-		"ai":              "🤖",
-		"data-liberation": "🔓",
-		"development":     "💻",
-		"entertainment":   "🎮",
-		"networking":      "🌐",
-		"privacy":         "🔒",
-		"productivity":    "⚡",
-		"publishing":      "📝",
-		"search":          "🔍",
-		"utility":         "🔧",
-	}
-	if i, ok := icons[cat]; ok {
-		return i
-	}
-	return "📦"
+	return withBase(basePath, "/static/img/icons/"+url.PathEscape(cat)+".svg")
 }
 
 func categoryLabel(cat string) string {

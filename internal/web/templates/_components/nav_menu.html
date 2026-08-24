@@ -1,0 +1,18 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/nav_menu.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{/* Phone nav: a hamburger over an absolutely positioned link list. Items is
+     a list of dicts with Href, Label, and optional NewTab. */}}
+{{define "nav-menu"}}
+<div class="nav-menu">
+  <button class="nav-menu__toggle" type="button" aria-expanded="false"
+          aria-controls="nav-menu-panel" aria-label="Menu">{{template "icon" (dict "BasePath" .BasePath "Name" "menu" "Size" 16)}}</button>
+  <div class="nav-menu__panel" id="nav-menu-panel" hidden>
+    <ul class="nav-menu__list">
+      {{- range .Items}}
+      <li><a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener"{{end}}>
+        {{- .Label}}{{if .NewTab}} <span class="nav-menu__ext" aria-hidden="true">&#8599;</span>{{end}}</a></li>
+      {{- end}}
+    </ul>
+  </div>
+</div>
+{{end}}

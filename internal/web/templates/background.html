@@ -1,0 +1,30 @@
+{{define "head-common"}}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="{{withBase .BasePath "/static/css/tokens.css"}}">
+  <link rel="stylesheet" href="{{withBase .BasePath "/static/css/base.css"}}">
+  <link rel="stylesheet" href="{{withBase .BasePath "/static/css/components.css"}}">
+  <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
+{{end}}
+
+{{define "site-banner"}}
+  <h1 class="banner"><span class="banner__text">Bottle Catalog</span></h1>
+{{end}}
+
+{{define "decorative-background"}}
+  {{template "nav-back" (dict "Href" .RouterBaseURL "BasePath" .BasePath)}}
+  <div class="deco-clouds" aria-hidden="true">
+    <span class="cloud cloud--1"></span>
+    <span class="cloud cloud--2"></span>
+    <span class="cloud cloud--3"></span>
+    <span class="cloud cloud--4"></span>
+    <span class="cloud cloud--5"></span>
+    <span class="cloud cloud--6"></span>
+    <span class="cloud cloud--7"></span>
+    <span class="cloud cloud--8"></span>
+  </div>
+  <div class="deco-grass" aria-hidden="true"></div>
+{{end}}

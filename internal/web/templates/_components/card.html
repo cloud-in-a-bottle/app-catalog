@@ -1,0 +1,13 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/card.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{define "card"}}
+<div class="card">
+  <div class="card__body">
+    <h3 class="card__title">{{.Title}}</h3>
+    <p class="card__desc">{{.Desc}}</p>
+  </div>
+  <div class="card__footer">
+    {{template "button" (dict "Label" .CtaLabel "Href" .CtaHref "Onclick" .CtaOnclick "Variant" (or .CtaVariant "primary") "Block" true "NewTab" .CtaNewTab)}}
+  </div>
+</div>
+{{end}}

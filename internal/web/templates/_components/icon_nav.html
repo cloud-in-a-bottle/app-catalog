@@ -1,0 +1,16 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/icon_nav.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{/* Right-aligned icon toolbar under the banner. Items is a list of dicts with
+     Href, Title, Icon, and optional Size; Label puts a heading on the row. */}}
+{{define "icon-nav"}}
+<div class="icon-nav{{if not .Label}} icon-nav--icons-only{{end}}">
+  {{- with .Label}}
+  <h2 class="section-label icon-nav__label">{{.}}</h2>
+  {{- end}}
+  <div class="icon-nav__icons">
+    {{- range .Items}}
+    <a class="icon-btn" href="{{.Href}}" title="{{.Title}}">{{template "icon" (dict "BasePath" $.BasePath "Name" .Icon "Size" (or .Size 16) "Alt" .Title)}}</a>
+    {{- end}}
+  </div>
+</div>
+{{end}}

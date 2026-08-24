@@ -1,0 +1,11 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/info_tip.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{/* An explanation parked behind an info icon: hover for pointer users, the
+     button pins it open for touch and keyboard. Needs static/js/info-tip.js. */}}
+{{define "info-tip"}}
+<span class="info-tip">
+  <button class="info-tip__toggle" type="button" aria-expanded="false"
+          aria-controls="{{.ID}}" aria-label="{{.Label}}">{{template "icon" (dict "BasePath" .BasePath "Name" "info" "Size" 13)}}</button>
+  <span class="info-tip__body info-tip__body--{{or .Align "start"}}" id="{{.ID}}" role="note">{{.Body}}</span>
+</span>
+{{end}}

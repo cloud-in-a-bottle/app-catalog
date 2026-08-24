@@ -1,0 +1,15 @@
+{{/* Copied from the main repo (compute_space/web/templates/_components/spec.html), ported to Go
+     templates. Do not edit here; change it in cloud-in-a-bottle and re-port. */}}
+{{/* Key/value list that collapses to stacked rows in narrow containers.
+     Rows is a list of dicts with Label and Value; spec-row builds one pair. */}}
+{{define "spec-list"}}
+<div class="spec">
+  <dl class="spec-list">
+    {{- range .Rows}}
+    {{template "spec-row" .}}
+    {{- end}}
+  </dl>
+</div>
+{{end}}
+
+{{define "spec-row"}}<dt>{{.Label}}</dt><dd>{{.Value}}</dd>{{end}}

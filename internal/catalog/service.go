@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/imbue-openhost/openhost-catalog/internal/store"
+	"github.com/cloud-in-a-bottle/app-catalog/internal/store"
 )
 
 var validIDPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)

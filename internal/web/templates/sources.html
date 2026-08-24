@@ -1,33 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Sources · OpenHost Catalog</title>
-  <link rel="stylesheet" href="{{withBase .BasePath "/static/style.css"}}">
+  {{template "head-common" .}}
+  <title>Sources · Cloud in a Bottle Catalog</title>
 </head>
 <body>
-  <h1>OpenHost Catalog</h1>
+  {{template "decorative-background" .}}
+
+  <main class="layout">
+  {{template "site-banner" .}}
   <nav>
-    <a href="{{withBase .BasePath "/"}}">Catalog</a>
-    <a href="{{withBase .BasePath "/sources"}}" class="nav-active">Sources</a>
-    <a href="{{withBase .BasePath "/?advanced"}}">Advanced Search</a>
-    <a href="{{withBase .BasePath "/submit"}}">List your app</a>
+    <a href="{{withBase .BasePath "/"}}">CATALOG</a>
+    <a href="{{withBase .BasePath "/sources"}}">SOURCES</a>
+    <a href="{{withBase .BasePath "/?advanced"}}">ADVANCED SEARCH</a>
+    <a href="{{withBase .BasePath "/submit"}}">LIST YOUR APP</a>
     <span class="spacer"></span>
-    <a href="{{.RouterBaseURL}}" class="nav-dashboard">&larr; Back to Openhost Dashboard</a>
   </nav>
 
-  <h2>Add Source</h2>
-  {{if .Message}}<p style="color: #080;">{{.Message}}</p>{{end}}
+  {{if .Message}}<p class="msg msg--ok">{{.Message}}</p>{{end}}
   {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 
-  <div style="margin-bottom: 1em;">
-    <form method="post" action="{{withBase .BasePath "/sources"}}">
-      <label>Source URL<br><input type="url" name="url" required placeholder="https://example.com/catalog.json" style="width: 400px; margin-bottom: 0.5em;"></label><br>
-      <label>Name (optional)<br><input type="text" name="name" placeholder="Official Catalog" style="width: 250px; margin-bottom: 0.5em;"></label><br>
-      <button type="submit" class="btn-primary">Add Source</button>
-    </form>
-  </div>
+  <form method="post" action="{{withBase .BasePath "/sources"}}">
+    <label class="field"><span>Source URL</span><input type="url" name="url" required placeholder="https://example.com/catalog.json"></label>
+    <label class="field"><span>Name (optional)</span><input type="text" name="name" placeholder="Official Catalog"></label>
+    <div class="actions">{{template "button" (dict "Label" "Add Source" "Type" "submit" "Variant" "primary")}}</div>
+  </form>
 
-  <h2 style="margin-top: 2em;">Configured Sources</h2>
+  <h2 class="section-title">Configured Sources</h2>
   {{if .Sources}}
   <table>
     <tr>
@@ -40,16 +39,17 @@
     {{range .Sources}}
     <tr>
       <td>{{.Name}}</td>
-      <td style="font-family: monospace; word-break: break-word;">{{.URL}}</td>
+      <td class="wrap-any">{{.URL}}</td>
       <td>{{if .Enabled}}enabled{{else}}disabled{{end}}</td>
       <td>{{if .LastSyncAt}}{{.LastSyncAt}}{{else}}-{{end}}</td>
       <td>
-        <div style="display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap;">
+        <div class="app-actions">
           <form method="post" action="{{withBase $.BasePath (printf "/sources/%s/toggle" .ID)}}" style="display: inline;">
-            <button type="submit">{{if .Enabled}}Disable{{else}}Enable{{end}}</button>
+            {{$toggleLabel := "Enable"}}{{if .Enabled}}{{$toggleLabel = "Disable"}}{{end}}
+            {{template "button" (dict "Label" $toggleLabel "Type" "submit")}}
           </form>
           <form method="post" action="{{withBase $.BasePath (printf "/sources/%s/delete" .ID)}}" style="display: inline;" onsubmit="return confirm('Delete source {{.Name}} and all synced entries?');">
-            <button type="submit" class="btn-danger">Delete</button>
+            {{template "button" (dict "Label" "Delete" "Type" "submit" "Variant" "danger")}}
           </form>
         </div>
       </td>
@@ -62,7 +62,8 @@
     {{end}}
   </table>
   {{else}}
-    <p style="color: #888;">No sources configured.</p>
+    <p class="muted">No sources configured.</p>
   {{end}}
+  </main>
 </body>
 </html>
