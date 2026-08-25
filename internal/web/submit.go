@@ -177,12 +177,21 @@ func buildListingEntry(rawTOML string) (listingEntry, []string) {
 	}
 
 	repoURL := strings.TrimSpace(app.RepoURL)
+	var urlRef string
 	switch {
 	case repoURL == "":
 		errs = append(errs, "repo_url is required.")
 	default:
-		if _, _, _, ok := parseGitHubRepo(repoURL); !ok {
+		owner, repo, ref, ok := parseGitHubRepo(repoURL)
+		if !ok {
 			errs = append(errs, "repo_url must be a GitHub repo (https://github.com/owner/repo).")
+		} else {
+			// Canonicalize to https://github.com/<owner>/<repo> so the
+			// generated entry matches the repo_url form app-manifest's CI
+			// accepts (https only, no www, no trailing path or .git). Any
+			// /tree|/blob ref from the pasted URL is lifted into repo_ref.
+			repoURL = "https://github.com/" + owner + "/" + repo
+			urlRef = ref
 		}
 	}
 
@@ -193,6 +202,9 @@ func buildListingEntry(rawTOML string) (listingEntry, []string) {
 	repoRef := strings.TrimSpace(app.RepoRef)
 	if strings.ContainsAny(repoRef, " \t\r\n") {
 		errs = append(errs, "repo_ref must not contain whitespace.")
+	}
+	if repoRef == "" {
+		repoRef = urlRef
 	}
 
 	tags := compactStrings(app.Tags)

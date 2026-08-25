@@ -41,8 +41,7 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
       "tags": ["search", "privacy"],
       "categories": ["search"],
       "website_url": "https://docs.searxng.org",
-      "docs_url": "https://github.com/cloud-in-a-bottle/bottled-searxng#readme",
-      "openhost_integration_score": 5
+      "docs_url": "https://github.com/cloud-in-a-bottle/bottled-searxng#readme"
     }
   ]
 }
@@ -52,26 +51,24 @@ Required fields: `name`, `title`, `repo_url`. All others may be omitted.
 
 `name` must be lowercase alphanumeric with optional interior hyphens (matches OpenHost's app name format). It is the catalog's identifier for the app, the default name when deploying, and must be unique within a source.
 
-## Integration score
+## Curation
 
-Each app may carry an `openhost_integration_score` — an integer **1-5** rating
-how natively the app integrates with OpenHost (SSO quality, data/secret
-conventions, guest handling). It is **not** a rating of the upstream project's
-quality.
+An app appears in the catalog if and only if the feed lists it. To remove an
+app, drop it from the source feed's manifest. Apps are ordered alphabetically
+by title.
 
-The score is optional. The catalog treats a missing/`0` score as **unrated** and
-renders it as "—" / "Unrated"; it does not mean a score of zero. The catalog
-clamps the score to 1-5 on ingest.
+## Submitting an app
 
-The canonical rubric and the checklist for assigning a score live in the feed
-repo: [app-manifest/SCORING.md](https://github.com/cloud-in-a-bottle/app-manifest/blob/main/SCORING.md).
+The `/submit` page ("List your app") helps contributors add an app to the feed.
+You fill in the app's details, the server validates them against the same rules
+the feed ingest enforces (app-name format, allowed categories, GitHub repo URL,
+and that the repo is public with an `openhost.toml` at its root), and it
+generates a canonical `apps/<name>/app.toml` entry.
 
-### How it's surfaced
-
-- **Catalog listing**: a star rating per app; hovering shows `N/5`. Higher-rated
-  apps sort first; unrated apps sort last.
-- **App detail page**: the star rating and `N/5`. The "OpenHost integration"
-  label links to the rubric.
+Submission is a pull request against the feed repo (`CATALOG_SUBMIT_REPO_URL`,
+the `cloud-in-a-bottle/app-manifest` repo by default): fork it, add the
+generated file, and open a PR. The repo's CI regenerates `catalog.json` and a
+maintainer reviews every submission before it appears in the catalog.
 
 ## Runtime configuration
 
@@ -83,6 +80,7 @@ repo: [app-manifest/SCORING.md](https://github.com/cloud-in-a-bottle/app-manifes
 - `OPENHOST_APP_NAME` (default `openhost-catalog`)
 - `OPENHOST_APP_BASE_PATH` (injected by OpenHost; used for path-based routing compatibility)
 - `DEFAULT_SOURCE_URL` (auto-seeded on first boot if no sources are configured; defaults to the official `cloud-in-a-bottle/app-manifest` catalog)
+- `CATALOG_SUBMIT_REPO_URL` (feed repo the "List your app" page points contributors at; defaults to `https://github.com/cloud-in-a-bottle/app-manifest`)
 - `CATALOG_ALLOW_HTTP_REPO_URLS` (default `false`)
 - `CATALOG_ALLOW_FILE_URLS` (default `false`)
 - `CATALOG_HTTP_TIMEOUT_SECONDS` (default `10`)

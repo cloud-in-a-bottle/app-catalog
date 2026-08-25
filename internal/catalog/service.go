@@ -48,17 +48,16 @@ type sourceFeed struct {
 }
 
 type sourceFeedApp struct {
-	Name                     string   `json:"name"`
-	Title                    string   `json:"title"`
-	Description              string   `json:"description"`
-	RepoURL                  string   `json:"repo_url"`
-	RepoRef                  string   `json:"repo_ref"`
-	IconURL                  string   `json:"icon_url"`
-	Tags                     []string `json:"tags"`
-	Categories               []string `json:"categories"`
-	WebsiteURL               string   `json:"website_url"`
-	DocsURL                  string   `json:"docs_url"`
-	OpenhostIntegrationScore int      `json:"openhost_integration_score"`
+	Name        string   `json:"name"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	RepoURL     string   `json:"repo_url"`
+	RepoRef     string   `json:"repo_ref"`
+	IconURL     string   `json:"icon_url"`
+	Tags        []string `json:"tags"`
+	Categories  []string `json:"categories"`
+	WebsiteURL  string   `json:"website_url"`
+	DocsURL     string   `json:"docs_url"`
 }
 
 func NewService(st *store.Store, client *http.Client) *Service {
@@ -202,27 +201,18 @@ func normalizeFeedApp(sourceID string, in sourceFeedApp) (store.CatalogApp, bool
 		title = appID
 	}
 
-	score := in.OpenhostIntegrationScore
-	if score < 0 {
-		score = 0
-	}
-	if score > 5 {
-		score = 5
-	}
-
 	out := store.CatalogApp{
-		SourceID:                 sourceID,
-		AppID:                    appID,
-		Title:                    title,
-		Description:              strings.TrimSpace(in.Description),
-		RepoURL:                  repoURL,
-		RepoRef:                  strings.TrimSpace(in.RepoRef),
-		IconURL:                  safeFeedURL(in.IconURL),
-		Tags:                     compactList(in.Tags),
-		Categories:               filterAllowedCategories(compactList(in.Categories)),
-		WebsiteURL:               safeFeedURL(in.WebsiteURL),
-		DocsURL:                  safeFeedURL(in.DocsURL),
-		OpenhostIntegrationScore: score,
+		SourceID:    sourceID,
+		AppID:       appID,
+		Title:       title,
+		Description: strings.TrimSpace(in.Description),
+		RepoURL:     repoURL,
+		RepoRef:     strings.TrimSpace(in.RepoRef),
+		IconURL:     safeFeedURL(in.IconURL),
+		Tags:        compactList(in.Tags),
+		Categories:  filterAllowedCategories(compactList(in.Categories)),
+		WebsiteURL:  safeFeedURL(in.WebsiteURL),
+		DocsURL:     safeFeedURL(in.DocsURL),
 	}
 
 	return out, true
