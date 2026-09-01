@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -33,6 +35,7 @@ func TestAllPagesRender(t *testing.T) {
 		"/submit":                 `class="submit-form"`,
 		"/publishes/pub1":         `id="publish-status"`,
 	}
+	const faviconLink = `rel="icon" type="image/svg+xml" href="/static/img/favicon.svg"`
 	for path, want := range pages {
 		code, body := get(t, srv, path)
 		if code != 200 {
@@ -45,5 +48,41 @@ func TestAllPagesRender(t *testing.T) {
 		if strings.Contains(body, "no value") {
 			t.Errorf("%s: template printed a missing value", path)
 		}
+		if !strings.Contains(body, faviconLink) {
+			t.Errorf("%s: missing favicon link", path)
+		}
+	}
+}
+
+func TestFaviconServed(t *testing.T) {
+	srv, _, _ := newTestServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/static/img/favicon.svg", nil)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("favicon: code %d", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "image/svg+xml") {
+		t.Fatalf("favicon: content type %q", got)
+	}
+	if !strings.Contains(rec.Body.String(), `viewBox="0 0 26 18"`) {
+		t.Fatal("favicon: missing expected viewBox")
+	}
+}
+
+func TestFaviconLinkIncludesAppBasePath(t *testing.T) {
+	srv, _, _ := newTestServer(t)
+	srv.cfg.AppBasePath = "/catalog"
+	req := httptest.NewRequest(http.MethodGet, "http://zone.example/", nil)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("index: code %d", rec.Code)
+	}
+	const want = `rel="icon" type="image/svg+xml" href="/catalog/static/img/favicon.svg"`
+	if !strings.Contains(rec.Body.String(), want) {
+		t.Fatalf("index: missing base-path favicon link %q", want)
 	}
 }
