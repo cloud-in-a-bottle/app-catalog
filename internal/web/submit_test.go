@@ -3,9 +3,16 @@ package web
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 func TestBuildAppTOMLOmitsEmptyOptionals(t *testing.T) {
 	got := buildAppTOML(appTOMLFields{
@@ -198,6 +205,41 @@ func TestCandidateRefs(t *testing.T) {
 		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
 			t.Errorf("candidateRefs(%q, %q) = %v, want %v", tc.repoRef, tc.urlRef, got, tc.want)
 		}
+	}
+}
+
+func TestFindManifest(t *testing.T) {
+	tests := []struct {
+		name           string
+		statuses       []int
+		wantFound      bool
+		wantConclusive bool
+		wantPaths      []string
+	}{
+		{"canonical", []int{http.StatusOK}, true, true, []string{"/you/app/HEAD/cloudinabottle.toml"}},
+		{"legacy fallback", []int{http.StatusNotFound, http.StatusOK}, true, true, []string{"/you/app/HEAD/cloudinabottle.toml", "/you/app/HEAD/openhost.toml"}},
+		{"missing", []int{http.StatusNotFound, http.StatusNotFound}, false, true, []string{"/you/app/HEAD/cloudinabottle.toml", "/you/app/HEAD/openhost.toml"}},
+		{"indeterminate", []int{http.StatusInternalServerError, http.StatusNotFound}, false, false, []string{"/you/app/HEAD/cloudinabottle.toml", "/you/app/HEAD/openhost.toml"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var paths []string
+			request := 0
+			s := &Server{http: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				paths = append(paths, req.URL.Path)
+				status := tc.statuses[request]
+				request++
+				return &http.Response{StatusCode: status, Body: http.NoBody}, nil
+			})}}
+
+			found, conclusive := s.findManifest(context.Background(), "you", "app", []string{"HEAD"})
+			if found != tc.wantFound || conclusive != tc.wantConclusive {
+				t.Errorf("findManifest() = (%v, %v), want (%v, %v)", found, conclusive, tc.wantFound, tc.wantConclusive)
+			}
+			if strings.Join(paths, ",") != strings.Join(tc.wantPaths, ",") {
+				t.Errorf("requested paths = %v, want %v", paths, tc.wantPaths)
+			}
+		})
 	}
 }
 

@@ -62,7 +62,8 @@ by title.
 The `/submit` page ("List your app") helps contributors add an app to the feed.
 You fill in the app's details, the server validates them against the same rules
 the feed ingest enforces (app-name format, allowed categories, GitHub repo URL,
-and that the repo is public with an `openhost.toml` at its root), and it
+and that the repo is public with a `cloudinabottle.toml` or legacy
+`openhost.toml` at its root), and it
 generates a canonical `apps/<name>/app.toml` entry.
 
 Submission is a pull request against the feed repo (`CATALOG_SUBMIT_REPO_URL`,

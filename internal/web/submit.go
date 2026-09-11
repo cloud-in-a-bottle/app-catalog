@@ -57,7 +57,7 @@ var submitFieldDocs = []fieldDoc{
 	{"name", "Required. Lowercase, hyphenated; the name the app deploys as (e.g. my-app)."},
 	{"title", "Required. Display name."},
 	{"description", "Required. One-line summary."},
-	{"repo_url", "Required. Public GitHub repo containing the app's openhost.toml."},
+	{"repo_url", "Required. Public GitHub repo containing cloudinabottle.toml (or legacy openhost.toml)."},
 	{"repo_ref", "Optional. Branch, tag, or commit to pin."},
 	{"icon_url", "Optional. Absolute http(s) URL to an icon."},
 	{"website_url", "Optional. Upstream project homepage."},
@@ -65,6 +65,8 @@ var submitFieldDocs = []fieldDoc{
 	{"tags", `Optional. Array of strings, e.g. ["rss", "news"].`},
 	{"categories", "Optional. Array drawn from the allowed categories below."},
 }
+
+var manifestFilenames = []string{"cloudinabottle.toml", "openhost.toml"}
 
 type submitPageData struct {
 	BasePath      string
@@ -379,7 +381,7 @@ func parseGitHubRepo(raw string) (owner, repo, ref string, ok bool) {
 }
 
 // checkRepo verifies, without auth, that the GitHub repo is public and has an
-// openhost.toml at its root. Returns a user-facing message on failure, or "".
+// app manifest at its root. Returns a user-facing message on failure, or "".
 func (s *Server) checkRepo(ctx context.Context, repoURL, repoRef string) string {
 	owner, repo, urlRef, ok := parseGitHubRepo(repoURL)
 	if !ok {
@@ -394,14 +396,14 @@ func (s *Server) checkRepo(ctx context.Context, repoURL, repoRef string) string 
 		return "Could not reach GitHub to verify the repository. Try again."
 	}
 
-	found, reachable := s.findManifest(ctx, owner, repo, candidateRefs(repoRef, urlRef))
+	found, conclusive := s.findManifest(ctx, owner, repo, candidateRefs(repoRef, urlRef))
 	if found {
 		return ""
 	}
-	if !reachable {
-		return "Could not reach GitHub to verify openhost.toml. Try again."
+	if !conclusive {
+		return "Could not reach GitHub to verify the app manifest. Try again."
 	}
-	return "No openhost.toml found at the repository root."
+	return "No cloudinabottle.toml or openhost.toml found at the repository root."
 }
 
 var lookupHost = net.DefaultResolver.LookupHost
@@ -433,7 +435,7 @@ func hostResolves(ctx context.Context, rawURL string) bool {
 	return err == nil && len(addrs) > 0
 }
 
-// candidateRefs orders the refs to probe for openhost.toml: an explicit pin,
+// candidateRefs orders the refs to probe for an app manifest: an explicit pin,
 // any ref from the URL, then the default branch. Falling back to the default
 // branch means a pasted /tree/<branch> link still validates.
 func candidateRefs(repoRef, urlRef string) []string {
@@ -449,20 +451,23 @@ func candidateRefs(repoRef, urlRef string) []string {
 	return refs
 }
 
-// findManifest reports whether openhost.toml exists at the root of any ref.
-// reachable is false only when every probe failed to reach GitHub.
-func (s *Server) findManifest(ctx context.Context, owner, repo string, refs []string) (found, reachable bool) {
+// findManifest reports whether a supported app manifest exists at the root of any ref.
+// conclusive is true when every probe returned a definitive not-found response.
+func (s *Server) findManifest(ctx context.Context, owner, repo string, refs []string) (found, conclusive bool) {
+	conclusive = true
 	for _, ref := range refs {
-		u := "https://raw.githubusercontent.com/" + owner + "/" + repo + "/" + ref + "/openhost.toml"
-		exists, notFound := classifyHead(s.headStatus(ctx, u))
-		if exists {
-			return true, true
-		}
-		if notFound {
-			reachable = true
+		for _, filename := range manifestFilenames {
+			u := "https://raw.githubusercontent.com/" + owner + "/" + repo + "/" + ref + "/" + filename
+			exists, notFound := classifyHead(s.headStatus(ctx, u))
+			if exists {
+				return true, true
+			}
+			if !notFound {
+				conclusive = false
+			}
 		}
 	}
-	return false, reachable
+	return false, conclusive
 }
 
 // classifyHead maps a HEAD status to existence: a 2xx or redirect means the
