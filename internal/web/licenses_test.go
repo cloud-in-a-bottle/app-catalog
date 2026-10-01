@@ -12,7 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-func TestCatalogPagesShowIndependentLicenses(t *testing.T) {
+func TestCatalogLicensesAppearOnlyOnDetails(t *testing.T) {
 	for _, tc := range []struct{ name, fields, license, packaging string }{
 		{"distinct", `,"license":" Apache-2.0 ","packaging_license":" MIT "`, "Apache-2.0", "MIT"},
 		{"application-only", `,"license":"MIT OR Apache-2.0"`, "MIT OR Apache-2.0", "Not specified"},
@@ -30,16 +30,19 @@ func TestCatalogPagesShowIndependentLicenses(t *testing.T) {
 			if err := addAndSync(t, svc, st, "s", "Source", fs.URL); err != nil {
 				t.Fatal(err)
 			}
-			for _, route := range []string{"/?category=all", "/apps/s/licensed"} {
+			for _, route := range []string{"/?category=all", "/?q=licensed", "/?advanced&filter=1&q=licensed", "/apps/s/licensed"} {
 				code, body := get(t, srv, route)
 				if code != http.StatusOK {
 					t.Fatalf("%s: HTTP %d", route, code)
 				}
 				for _, field := range []struct{ label, value string }{{"Application license", tc.license}, {"Packaging license", tc.packaging}} {
-					want := field.label + ": " + html.EscapeString(field.value) + "</div>"
-					if route == "/apps/s/licensed" {
-						want = `<th scope="row">` + field.label + `</th><td class="wrap-any">` + html.EscapeString(field.value) + `</td>`
+					if route != "/apps/s/licensed" {
+						if strings.Contains(body, field.label) {
+							t.Errorf("%s unexpectedly displays %q", route, field.label)
+						}
+						continue
 					}
+					want := `<th scope="row">` + field.label + `</th><td class="wrap-any">` + html.EscapeString(field.value) + `</td>`
 					if !strings.Contains(body, want) {
 						t.Errorf("%s: missing %q", route, want)
 					}

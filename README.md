@@ -51,7 +51,7 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
 
 Required fields: `name`, `title`, `repo_url`. All others may be omitted.
 
-`license` describes the application itself; `packaging_license` describes its Cloud in a Bottle packaging and integration code. Both are optional strings, preferably SPDX identifiers or expressions (for example, `MIT OR Apache-2.0`); custom license names are also supported. The catalog displays them independently in app listings and detail pages. Leading and trailing whitespace is ignored, and absent or blank values display as "Not specified". JSON feeds may also use `null` for an unspecified license, matching the other optional metadata fields. Other non-string values are rejected. Existing feeds and cached entries remain compatible; source sync refreshes these fields along with the other listing metadata.
+`license` describes the application itself; `packaging_license` describes its Cloud in a Bottle packaging and integration code. Both are optional strings, preferably SPDX identifiers or expressions (for example, `MIT OR Apache-2.0`); custom license names are also supported. The catalog displays them independently only on each app's details page. Leading and trailing whitespace is ignored, and absent or blank values display as "Not specified". JSON feeds may also use `null` for an unspecified license, matching the other optional metadata fields. Other non-string values are rejected. Existing feeds and cached entries remain compatible; source sync refreshes these fields along with the other listing metadata.
 
 These are catalog listing fields in `apps/<name>/app.toml`, also supported by the "List your app" editor. They are not deployment settings in `cloudinabottle.toml`.
 
