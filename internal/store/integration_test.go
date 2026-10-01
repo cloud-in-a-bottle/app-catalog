@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -36,11 +37,13 @@ func TestCatalogAppRoundTrip(t *testing.T) {
 
 	apps := []CatalogApp{
 		{
-			SourceID:    "official",
-			AppID:       "searxng",
-			Title:       "SearXNG",
-			Description: "Privacy-respecting metasearch",
-			RepoURL:     "https://example.invalid/searxng",
+			SourceID:         "official",
+			AppID:            "searxng",
+			Title:            "SearXNG",
+			Description:      "Privacy-respecting metasearch",
+			License:          "AGPL-3.0-only",
+			PackagingLicense: "MIT",
+			RepoURL:          "https://example.invalid/searxng",
 		},
 	}
 	if err := store.ReplaceCatalogAppsForSource(ctx, "official", apps); err != nil {
@@ -56,6 +59,65 @@ func TestCatalogAppRoundTrip(t *testing.T) {
 	}
 	if got.RepoURL != "https://example.invalid/searxng" {
 		t.Errorf("repo_url: got %q", got.RepoURL)
+	}
+	if got.License != "AGPL-3.0-only" || got.PackagingLicense != "MIT" {
+		t.Errorf("licenses were not preserved: %+v", got)
+	}
+	listed, err := store.ListCatalogApps(ctx, AppListFilter{})
+	if err != nil || len(listed) != 1 {
+		t.Fatalf("list apps: got %v, error %v", listed, err)
+	}
+	if listed[0].License != got.License || listed[0].PackagingLicense != got.PackagingLicense {
+		t.Errorf("listing and detail licenses differ: %+v vs %+v", listed[0], got)
+	}
+}
+
+func TestLicenseMigrationPreservesExistingCatalog(t *testing.T) {
+	for _, missing := range [][]string{{"license", "packaging_license"}, {"license"}, {"packaging_license"}} {
+		t.Run(fmt.Sprint(missing), func(t *testing.T) {
+			st, err := Open(filepath.Join(t.TempDir(), "catalog.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer st.Close()
+			ctx := context.Background()
+			if err := st.Init(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.CreateSource(ctx, Source{ID: "s", Name: "Source", URL: "https://example.invalid/feed", Enabled: true}); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.ReplaceCatalogAppsForSource(ctx, "s", []CatalogApp{{
+				AppID: "example", Title: "Existing app", RepoURL: "https://example.invalid/app",
+				License: "Apache-2.0", PackagingLicense: "MIT",
+			}}); err != nil {
+				t.Fatal(err)
+			}
+			// Simulate the previous schema, including an interrupted two-column migration.
+			wantLicense, wantPackaging := "Apache-2.0", "MIT"
+			for _, column := range missing {
+				if _, err := st.db.ExecContext(ctx, "ALTER TABLE catalog_apps DROP COLUMN "+column); err != nil {
+					t.Fatal(err)
+				}
+				if column == "license" {
+					wantLicense = ""
+				} else {
+					wantPackaging = ""
+				}
+			}
+			for attempt := 0; attempt < 2; attempt++ {
+				if err := st.Init(ctx); err != nil {
+					t.Fatalf("migration attempt %d: %v", attempt, err)
+				}
+				app, err := st.GetCatalogApp(ctx, "s", "example")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if app.Title != "Existing app" || app.RepoURL != "https://example.invalid/app" || app.License != wantLicense || app.PackagingLicense != wantPackaging {
+					t.Fatalf("migration changed catalog data: %+v", app)
+				}
+			}
+		})
 	}
 }
 

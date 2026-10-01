@@ -31,19 +31,21 @@ type Source struct {
 }
 
 type CatalogApp struct {
-	SourceID    string
-	SourceName  string
-	AppID       string
-	Title       string
-	Description string
-	RepoURL     string
-	RepoRef     string
-	IconURL     string
-	Tags        []string
-	Categories  []string
-	WebsiteURL  string
-	DocsURL     string
-	UpdatedAt   string
+	SourceID         string
+	SourceName       string
+	AppID            string
+	Title            string
+	Description      string
+	License          string
+	PackagingLicense string
+	RepoURL          string
+	RepoRef          string
+	IconURL          string
+	Tags             []string
+	Categories       []string
+	WebsiteURL       string
+	DocsURL          string
+	UpdatedAt        string
 }
 
 type Publish struct {
@@ -137,6 +139,8 @@ func (s *Store) Init(ctx context.Context) error {
 			app_id TEXT NOT NULL,
 			title TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
+			license TEXT NOT NULL DEFAULT '',
+			packaging_license TEXT NOT NULL DEFAULT '',
 			repo_url TEXT NOT NULL,
 			repo_ref TEXT NOT NULL DEFAULT '',
 			icon_url TEXT NOT NULL DEFAULT '',
@@ -175,6 +179,17 @@ func (s *Store) Init(ctx context.Context) error {
 	for _, stmt := range statements {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("initialize schema: %w", err)
+		}
+	}
+
+	// Existing catalog caches predate license metadata. Empty values preserve
+	// their entries until the next source sync supplies the new fields.
+	for _, stmt := range []string{
+		`ALTER TABLE catalog_apps ADD COLUMN license TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE catalog_apps ADD COLUMN packaging_license TEXT NOT NULL DEFAULT ''`,
+	} {
+		if _, err := s.db.ExecContext(ctx, stmt); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return fmt.Errorf("add catalog license columns: %w", err)
 		}
 	}
 
@@ -301,9 +316,9 @@ func (s *Store) ReplaceCatalogAppsForSource(ctx context.Context, sourceID string
 	}
 
 	insertStmt := `INSERT INTO catalog_apps
-	(source_id, app_id, title, description, repo_url, repo_ref, icon_url,
+	(source_id, app_id, title, description, license, packaging_license, repo_url, repo_ref, icon_url,
 	 tags_json, categories_json, website_url, docs_url, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	now := nowString()
 	for _, app := range apps {
@@ -323,6 +338,8 @@ func (s *Store) ReplaceCatalogAppsForSource(ctx context.Context, sourceID string
 			app.AppID,
 			app.Title,
 			app.Description,
+			app.License,
+			app.PackagingLicense,
 			app.RepoURL,
 			app.RepoRef,
 			app.IconURL,
@@ -385,6 +402,8 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 		ca.app_id,
 		ca.title,
 		ca.description,
+		ca.license,
+		ca.packaging_license,
 		ca.repo_url,
 		ca.repo_ref,
 		ca.icon_url,
@@ -463,6 +482,8 @@ func (s *Store) ListCatalogApps(ctx context.Context, filter AppListFilter) ([]Ca
 			&app.AppID,
 			&app.Title,
 			&app.Description,
+			&app.License,
+			&app.PackagingLicense,
 			&app.RepoURL,
 			&app.RepoRef,
 			&app.IconURL,
@@ -519,6 +540,8 @@ func (s *Store) GetCatalogApp(ctx context.Context, sourceID, appID string) (Cata
 			ca.app_id,
 			ca.title,
 			ca.description,
+			ca.license,
+			ca.packaging_license,
 			ca.repo_url,
 			ca.repo_ref,
 			ca.icon_url,
@@ -542,6 +565,8 @@ func (s *Store) GetCatalogApp(ctx context.Context, sourceID, appID string) (Cata
 		&app.AppID,
 		&app.Title,
 		&app.Description,
+		&app.License,
+		&app.PackagingLicense,
 		&app.RepoURL,
 		&app.RepoRef,
 		&app.IconURL,
