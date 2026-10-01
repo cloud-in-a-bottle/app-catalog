@@ -32,22 +32,28 @@ Each source URL must return JSON with schema `openhost.catalog.v1`:
   "generated_at": "2026-03-28T00:00:00Z",
   "apps": [
     {
-      "name": "searxng",
-      "title": "SearXNG",
-      "description": "Privacy-respecting metasearch engine",
-      "repo_url": "https://github.com/cloud-in-a-bottle/bottled-searxng",
+      "name": "miniflux",
+      "title": "Miniflux",
+      "description": "Minimalist RSS/Atom feed reader",
+      "license": "Apache-2.0",
+      "packaging_license": "MIT",
+      "repo_url": "https://github.com/cloud-in-a-bottle/bottled-miniflux",
       "repo_ref": "",
       "icon_url": "",
-      "tags": ["search", "privacy"],
-      "categories": ["search"],
-      "website_url": "https://docs.searxng.org",
-      "docs_url": "https://github.com/cloud-in-a-bottle/bottled-searxng#readme"
+      "tags": ["rss", "privacy"],
+      "categories": ["productivity"],
+      "website_url": "https://miniflux.app",
+      "docs_url": "https://github.com/cloud-in-a-bottle/bottled-miniflux#readme"
     }
   ]
 }
 ```
 
 Required fields: `name`, `title`, `repo_url`. All others may be omitted.
+
+`license` describes the application itself; `packaging_license` describes its Cloud in a Bottle packaging and integration code. Both are optional strings, preferably SPDX identifiers or expressions (for example, `MIT OR Apache-2.0`); custom license names are also supported. The catalog displays them independently in app listings and detail pages. Leading and trailing whitespace is ignored, and absent or blank values display as "Not specified". JSON feeds may also use `null` for an unspecified license, matching the other optional metadata fields. Other non-string values are rejected. Existing feeds and cached entries remain compatible; source sync refreshes these fields along with the other listing metadata.
+
+These are catalog listing fields in `apps/<name>/app.toml`, also supported by the "List your app" editor. They are not deployment settings in `cloudinabottle.toml`.
 
 `name` must be lowercase alphanumeric with optional interior hyphens (matches OpenHost's app name format). It is the catalog's identifier for the app, the default name when deploying, and must be unique within a source.
 

@@ -128,6 +128,10 @@
     <td>
       <div class="app-title">{{highlight .Title $.Query}}</div>
       <div class="app-desc">{{highlight .Description $.Query}}</div>
+      <div class="app-licenses">
+        <div>Application license: {{if .License}}{{.License}}{{else}}Not specified{{end}}</div>
+        <div>Packaging license: {{if .PackagingLicense}}{{.PackagingLicense}}{{else}}Not specified{{end}}</div>
+      </div>
     </td>
     <td>
       {{if or .Categories .Tags}}

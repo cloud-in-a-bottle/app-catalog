@@ -48,16 +48,18 @@ type sourceFeed struct {
 }
 
 type sourceFeedApp struct {
-	Name        string   `json:"name"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	RepoURL     string   `json:"repo_url"`
-	RepoRef     string   `json:"repo_ref"`
-	IconURL     string   `json:"icon_url"`
-	Tags        []string `json:"tags"`
-	Categories  []string `json:"categories"`
-	WebsiteURL  string   `json:"website_url"`
-	DocsURL     string   `json:"docs_url"`
+	Name             string   `json:"name"`
+	Title            string   `json:"title"`
+	Description      string   `json:"description"`
+	License          string   `json:"license"`
+	PackagingLicense string   `json:"packaging_license"`
+	RepoURL          string   `json:"repo_url"`
+	RepoRef          string   `json:"repo_ref"`
+	IconURL          string   `json:"icon_url"`
+	Tags             []string `json:"tags"`
+	Categories       []string `json:"categories"`
+	WebsiteURL       string   `json:"website_url"`
+	DocsURL          string   `json:"docs_url"`
 }
 
 func NewService(st *store.Store, client *http.Client) *Service {
@@ -202,17 +204,19 @@ func normalizeFeedApp(sourceID string, in sourceFeedApp) (store.CatalogApp, bool
 	}
 
 	out := store.CatalogApp{
-		SourceID:    sourceID,
-		AppID:       appID,
-		Title:       title,
-		Description: strings.TrimSpace(in.Description),
-		RepoURL:     repoURL,
-		RepoRef:     strings.TrimSpace(in.RepoRef),
-		IconURL:     safeFeedURL(in.IconURL),
-		Tags:        compactList(in.Tags),
-		Categories:  filterAllowedCategories(compactList(in.Categories)),
-		WebsiteURL:  safeFeedURL(in.WebsiteURL),
-		DocsURL:     safeFeedURL(in.DocsURL),
+		SourceID:         sourceID,
+		AppID:            appID,
+		Title:            title,
+		Description:      strings.TrimSpace(in.Description),
+		License:          strings.TrimSpace(in.License),
+		PackagingLicense: strings.TrimSpace(in.PackagingLicense),
+		RepoURL:          repoURL,
+		RepoRef:          strings.TrimSpace(in.RepoRef),
+		IconURL:          safeFeedURL(in.IconURL),
+		Tags:             compactList(in.Tags),
+		Categories:       filterAllowedCategories(compactList(in.Categories)),
+		WebsiteURL:       safeFeedURL(in.WebsiteURL),
+		DocsURL:          safeFeedURL(in.DocsURL),
 	}
 
 	return out, true

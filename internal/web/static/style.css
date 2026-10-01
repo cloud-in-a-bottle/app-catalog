@@ -231,6 +231,12 @@ input.landing-search-input:focus {
   align-items: stretch;
 }
 
+.app-licenses {
+  margin-top: var(--space-2);
+  color: var(--color-text-subtle);
+  overflow-wrap: anywhere;
+}
+
 .app-action-btn {
   width: 6.5em;
 }

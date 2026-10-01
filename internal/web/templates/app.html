@@ -26,6 +26,8 @@
     <tbody>
       {{template "info-row" (dict "Label" "Catalog ID" "Value" (printf "%s/%s" .App.SourceID .App.AppID))}}
       {{template "info-row" (dict "Label" "Source" "Value" .App.SourceName)}}
+      <tr><th scope="row">Application license</th><td class="wrap-any">{{if .App.License}}{{.App.License}}{{else}}Not specified{{end}}</td></tr>
+      <tr><th scope="row">Packaging license</th><td class="wrap-any">{{if .App.PackagingLicense}}{{.App.PackagingLicense}}{{else}}Not specified{{end}}</td></tr>
       <tr><th scope="row">Repository</th><td class="wrap-any">{{.App.RepoURL}}{{if .App.RepoRef}}@{{.App.RepoRef}}{{end}}</td></tr>
       <tr><th scope="row">Tags</th><td>{{if .App.Tags}}{{join .App.Tags ", "}}{{else}}-{{end}}</td></tr>
       <tr><th scope="row">Categories</th><td>{{if .App.Categories}}{{join .App.Categories ", "}}{{else}}-{{end}}</td></tr>

@@ -22,6 +22,8 @@ description = "One-line summary of what the app does."
 repo_url = "https://github.com/you/your-app"
 
 # Optional — uncomment and edit any you need:
+# license = "Apache-2.0"
+# packaging_license = "MIT"
 # repo_ref = "main"
 # icon_url = "https://example.com/icon.png"
 # website_url = "https://example.com"
@@ -35,16 +37,18 @@ type appManifest struct {
 }
 
 type appManifestApp struct {
-	Name        string   `toml:"name"`
-	Title       string   `toml:"title"`
-	Description string   `toml:"description"`
-	RepoURL     string   `toml:"repo_url"`
-	RepoRef     string   `toml:"repo_ref"`
-	IconURL     string   `toml:"icon_url"`
-	WebsiteURL  string   `toml:"website_url"`
-	DocsURL     string   `toml:"docs_url"`
-	Tags        []string `toml:"tags"`
-	Categories  []string `toml:"categories"`
+	Name             string   `toml:"name"`
+	Title            string   `toml:"title"`
+	Description      string   `toml:"description"`
+	License          string   `toml:"license"`
+	PackagingLicense string   `toml:"packaging_license"`
+	RepoURL          string   `toml:"repo_url"`
+	RepoRef          string   `toml:"repo_ref"`
+	IconURL          string   `toml:"icon_url"`
+	WebsiteURL       string   `toml:"website_url"`
+	DocsURL          string   `toml:"docs_url"`
+	Tags             []string `toml:"tags"`
+	Categories       []string `toml:"categories"`
 }
 
 // fieldDoc describes one app.toml key for the reference list under the editor.
@@ -57,6 +61,8 @@ var submitFieldDocs = []fieldDoc{
 	{"name", "Required. Lowercase, hyphenated; the name the app deploys as (e.g. my-app)."},
 	{"title", "Required. Display name."},
 	{"description", "Required. One-line summary."},
+	{"license", "Optional. Application license; prefer an SPDX identifier or expression (e.g. Apache-2.0 or MIT OR Apache-2.0). Custom names are accepted."},
+	{"packaging_license", "Optional. License of the packaging and integration code, declared independently of the application license."},
 	{"repo_url", "Required. Public GitHub repo containing cloudinabottle.toml (or legacy openhost.toml)."},
 	{"repo_ref", "Optional. Branch, tag, or commit to pin."},
 	{"icon_url", "Optional. Absolute http(s) URL to an icon."},
@@ -233,16 +239,18 @@ func buildListingEntry(rawTOML string) (listingEntry, []string) {
 	}
 
 	toml := buildAppTOML(appTOMLFields{
-		Name:        name,
-		Title:       title,
-		Description: description,
-		RepoURL:     repoURL,
-		RepoRef:     repoRef,
-		IconURL:     iconURL,
-		WebsiteURL:  websiteURL,
-		DocsURL:     docsURL,
-		Tags:        tags,
-		Categories:  categories,
+		Name:             name,
+		Title:            title,
+		Description:      description,
+		License:          strings.TrimSpace(app.License),
+		PackagingLicense: strings.TrimSpace(app.PackagingLicense),
+		RepoURL:          repoURL,
+		RepoRef:          repoRef,
+		IconURL:          iconURL,
+		WebsiteURL:       websiteURL,
+		DocsURL:          docsURL,
+		Tags:             tags,
+		Categories:       categories,
 	})
 	return listingEntry{
 		name:       name,
@@ -278,16 +286,18 @@ func compactStrings(in []string) []string {
 }
 
 type appTOMLFields struct {
-	Name        string
-	Title       string
-	Description string
-	RepoURL     string
-	RepoRef     string
-	IconURL     string
-	WebsiteURL  string
-	DocsURL     string
-	Tags        []string
-	Categories  []string
+	Name             string
+	Title            string
+	Description      string
+	License          string
+	PackagingLicense string
+	RepoURL          string
+	RepoRef          string
+	IconURL          string
+	WebsiteURL       string
+	DocsURL          string
+	Tags             []string
+	Categories       []string
 }
 
 // buildAppTOML renders an apps/<name>/app.toml entry, omitting optional
@@ -298,6 +308,12 @@ func buildAppTOML(f appTOMLFields) string {
 	b.WriteString("name = " + tomlString(f.Name) + "\n")
 	b.WriteString("title = " + tomlString(f.Title) + "\n")
 	b.WriteString("description = " + tomlString(f.Description) + "\n")
+	if f.License != "" {
+		b.WriteString("license = " + tomlString(f.License) + "\n")
+	}
+	if f.PackagingLicense != "" {
+		b.WriteString("packaging_license = " + tomlString(f.PackagingLicense) + "\n")
+	}
 	b.WriteString("repo_url = " + tomlString(f.RepoURL) + "\n")
 	if f.RepoRef != "" {
 		b.WriteString("repo_ref = " + tomlString(f.RepoRef) + "\n")
